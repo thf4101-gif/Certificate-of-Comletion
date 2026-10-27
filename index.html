@@ -104,6 +104,9 @@
   .tb-field input:focus, .tb-field select:focus { outline: none; border-color: #0d9488; }
   .tb-quick-btn { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; border: 1px solid #99f6e4; background: #ffffff; color: #0f766e; font-size: 13px; font-weight: 700; cursor: pointer; transition: all .15s; }
   .tb-quick-btn:hover { background: #ccfbf1; }
+  .tb-method-btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 14px; border-radius: 12px; border: 2px solid #cbd5e1; background: #ffffff; color: #334155; cursor: pointer; text-align: center; transition: all .15s ease; font-family: inherit; }
+  .tb-method-btn:hover { border-color: #0d9488; background: #f0fdfa; color: #0f766e; }
+  .tb-method-btn.active { border-color: #0d9488; background: #0d9488; color: #ffffff; font-weight: 800; box-shadow: 0 3px 8px rgba(13,148,136,0.25); }
 
   /* 이수증 파일 첨부 UI */
   .file-attach-box { margin-top: 10px; padding: 10px 14px; border-radius: 12px; background: #ffffff; border: 1.5px dashed #cbd5e1;
@@ -317,24 +320,28 @@ const isTbTask = name => /결핵|흉부\s*X선|흉부\s*엑스선|흉부X선|X-r
 let tbState = {
   tab: 'even', // 'even' (짝수년도), 'odd' (홀수년도), 'other' (기타 인정 대상)
   evenDone: true,
+  evenDate: U.fmt(new Date()).slice(0, 10),
   evenHospital: '',
   oddDone: true,
-  oddDate: '2026-09-15',
-  oddType: '교내 출장검진 (9/15)',
+  oddMethod: '출장검진', // '출장검진' 또는 '개별 병원/보건소 검진'
+  oddDate: U.fmt(new Date()).slice(0, 10),
+  oddHospital: '',
   otherType: '식품위생법 학교급식종사자 건강진단',
   otherDate: U.fmt(new Date()).slice(0, 10),
 };
 
 function getTbMemo() {
   if (tbState.tab === 'even') {
-    const hosp = tbState.evenHospital ? ` (${tbState.evenHospital})` : '';
+    const d = tbState.evenDate ? ` (${tbState.evenDate})` : '';
+    const hosp = tbState.evenHospital ? ` [${tbState.evenHospital}]` : '';
     const status = tbState.evenDone ? '국가건강검진(흉부X선) 완료' : '국가건강검진 대상자';
-    return `[짝수년도 출생자] ${status}${hosp}`;
+    return `[짝수년도 출생자] ${status}${d}${hosp}`;
   } else if (tbState.tab === 'odd') {
-    const d = tbState.oddDate || '2026-09-15';
-    const t = tbState.oddType || '교내 출장검진';
+    const d = tbState.oddDate || U.fmt(new Date()).slice(0, 10);
+    const m = tbState.oddMethod || '출장검진';
+    const hosp = (m === '개별 병원/보건소 검진' && tbState.oddHospital) ? ` (${tbState.oddHospital})` : '';
     const status = tbState.oddDone ? '결핵검진 실시' : '결핵검진 예정';
-    return `[홀수년도 출생자] ${status} (${d}, ${t})`;
+    return `[홀수년도 출생자] ${status} (${d}, ${m}${hosp})`;
   } else {
     const d = tbState.otherDate || U.fmt(new Date()).slice(0, 10);
     return `[${tbState.otherType}] 결핵검진 실시 (${d})`;
@@ -464,9 +471,9 @@ function renderTasks() {
         <div class="tb-guide-banner">
           <b>📋 학교 결핵관리 지침 (활동성 결핵검진 - 흉부X선 검사)</b><br>
           • <b>모든 교직원</b>: 매년 흉부X선 검사 의무 실시<br>
-          • <b>짝수년도 출생자</b>: 올해 국가건강검진 대상자에 해당 (건강검진 시행 여부 확인)<br>
-          • <b>홀수년도 출생자</b>: 올해 국가검진 비대상자는 <b>9월 15일 학교 출장 검진</b>으로 실시 예정(별도 검진 불필요)<br>
-          • 학교급식종사자 건강진단(연1회), 신규채용자(1개월 이내), 복직자(1개월 이내), 개별 X선도 인정됨
+          • <b>짝수년도 출생자</b>: 올해 국가건강검진 대상자에 해당 (건강검진 시행 여부 및 검진일자 직접 기입)<br>
+          • <b>홀수년도 출생자</b>: 출장검진 또는 개별 병원/보건소 검진 실시 (검진일자 직접 기입)<br>
+          • 학교급식종사자 건강진단(연1회), 신규채용자(1개월 이내), 복직자(1개월 이내) 인정
         </div>
 
         <div style="font-size:14px; font-weight:800; color:#0f766e; margin-bottom:8px;">
@@ -478,7 +485,7 @@ function renderTasks() {
             🔵 짝수년도 출생자<br><span style="font-size:12px; font-weight:500;">(국가건강검진 대상자)</span>
           </button>
           <button type="button" class="tb-tab-btn ${tbState.tab === 'odd' ? 'active' : ''}" data-tb-tab="odd">
-            🟢 홀수년도 출생자<br><span style="font-size:12px; font-weight:500;">(국가검진 비대상 / 9.15 출장)</span>
+            🟢 홀수년도 출생자<br><span style="font-size:12px; font-weight:500;">(출장검진 / 병원·보건소)</span>
           </button>
           <button type="button" class="tb-tab-btn ${tbState.tab === 'other' ? 'active' : ''}" data-tb-tab="other">
             ⚪ 기타 인정 대상<br><span style="font-size:12px; font-weight:500;">(급식종사자·채용검사 등)</span>
@@ -491,8 +498,15 @@ function renderTasks() {
               <input type="checkbox" id="tbEvenCheck" ${tbState.evenDone ? 'checked' : ''} style="width:18px; height:18px; accent-color:#0d9488; cursor:pointer;">
               <label for="tbEvenCheck" style="cursor:pointer;">올해 국가건강검진(흉부X선 포함)을 시행하였습니다.</label>
             </div>
-            <div style="color:#64748b; font-size:13px; margin-left:26px; line-height:1.5;">
+            <div style="color:#64748b; font-size:13px; margin-left:26px; line-height:1.5; margin-bottom:12px;">
               당해년도 국민건강보험법에 따른 일반건강검진(흉부X선 검사)을 수검한 경우 결핵검진으로 인정됩니다.
+            </div>
+            <div class="tb-field">
+              <label for="tbEvenDate" style="display:flex; justify-content:space-between; align-items:center;">
+                <span>📅 검진일자 직접 기입 (수검일자)</span>
+                <span style="font-size:12px; font-weight:normal; color:#0d9488;">직접 날짜를 입력/선택하세요</span>
+              </label>
+              <input type="date" id="tbEvenDate" value="${esc(tbState.evenDate || today)}" style="padding:10px 12px; font-size:15px; font-weight:700; color:#1e293b;">
             </div>
             <div class="tb-field" style="margin-top:10px;">
               <label for="tbEvenHosp">검진 기관명 또는 비고 (선택 사항)</label>
@@ -503,27 +517,44 @@ function renderTasks() {
 
         ${tbState.tab === 'odd' ? `
           <div class="tb-panel">
-            <div style="display:flex; align-items:center; gap:8px; font-weight:700; color:#1e293b; font-size:15px; margin-bottom:6px;">
+            <div style="display:flex; align-items:center; gap:8px; font-weight:700; color:#1e293b; font-size:15px; margin-bottom:12px;">
               <input type="checkbox" id="tbOddCheck" ${tbState.oddDone ? 'checked' : ''} style="width:18px; height:18px; accent-color:#0d9488; cursor:pointer;">
               <label for="tbOddCheck" style="cursor:pointer;">결핵검진(흉부X선)을 시행하였거나 시행 예정입니다.</label>
             </div>
-            <div style="color:#0f766e; background:#f0fdfa; border:1px solid #ccfbf1; padding:8px 12px; border-radius:8px; font-size:13px; margin:6px 0 10px; line-height:1.5;">
-              💡 올해 국가검진 비대상자는 <b>9월 15일 학교 출장 검진</b>으로 실시 예정이므로 따로 받지 않으셔도 됩니다.
+
+            <div style="font-size:13.5px; font-weight:700; color:#334155; margin-bottom:8px;">
+              검진 방식 선택 (클릭):
             </div>
-            
-            <div style="margin-bottom:8px; display:flex; gap:6px; flex-wrap:wrap;">
-              <button type="button" class="tb-quick-btn" data-tb-quick="school">🏫 9월 15일 교내 출장검진 (원클릭 입력)</button>
-              <button type="button" class="tb-quick-btn" data-tb-quick="direct">🏥 개별 병원/보건소 검진</button>
+
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap:10px; margin-bottom:12px;">
+              <button type="button" class="tb-method-btn ${tbState.oddMethod === '출장검진' ? 'active' : ''}" data-tb-method="출장검진">
+                <span style="font-size:20px;">🏫</span>
+                <span style="font-size:15px;">출장검진</span>
+              </button>
+              <button type="button" class="tb-method-btn ${tbState.oddMethod === '개별 병원/보건소 검진' ? 'active' : ''}" data-tb-method="개별 병원/보건소 검진">
+                <span style="font-size:20px;">🏥</span>
+                <span style="font-size:15px;">개별 병원/보건소 검진</span>
+              </button>
             </div>
 
             <div class="tb-field">
-              <label for="tbOddDate">검진 일자 (시행일 또는 예정일)</label>
-              <input type="date" id="tbOddDate" value="${esc(tbState.oddDate || '2026-09-15')}">
+              <label for="tbOddDate" style="display:flex; justify-content:space-between; align-items:center;">
+                <span>📅 검진일자 직접 기입 (시행일 또는 예정일)</span>
+                <span style="font-size:12px; font-weight:normal; color:#0d9488;">직접 날짜를 입력/선택하세요</span>
+              </label>
+              <input type="date" id="tbOddDate" value="${esc(tbState.oddDate || today)}" style="padding:10px 12px; font-size:15px; font-weight:700; color:#1e293b;">
             </div>
-            <div class="tb-field">
-              <label for="tbOddType">검진 구분 / 비고</label>
-              <input type="text" id="tbOddType" placeholder="예: 교내 출장검진, 또는 ○○병원 검진" value="${esc(tbState.oddType || '교내 출장검진 (9/15)')}">
-            </div>
+
+            ${tbState.oddMethod === '개별 병원/보건소 검진' ? `
+              <div class="tb-field" style="margin-top:10px;">
+                <label for="tbOddHospital">검진 기관명 (병원 / 보건소명, 선택 사항)</label>
+                <input type="text" id="tbOddHospital" placeholder="예: ○○병원, 인근 보건소" value="${esc(tbState.oddHospital || '')}">
+              </div>
+            ` : `
+              <div style="font-size:12.5px; color:#0f766e; background:#f0fdfa; border:1px solid #ccfbf1; padding:8px 12px; border-radius:8px; margin-top:10px; line-height:1.5;">
+                ℹ️ 학교 출장검진 시행일(또는 예정일)을 확인하신 후 검진일자를 직접 기입해 주세요.
+              </div>
+            `}
           </div>
         ` : ''}
 
@@ -535,7 +566,6 @@ function renderTasks() {
                 <option value="식품위생법 학교급식종사자 건강진단" ${tbState.otherType.includes('급식') ? 'selected' : ''}>식품위생법 학교급식종사자 건강진단 (연 1회 이상)</option>
                 <option value="신규채용자 채용검사(결핵포함)" ${tbState.otherType.includes('신규') ? 'selected' : ''}>신규채용자 채용검사 (채용 1개월 이내)</option>
                 <option value="복직자 검진" ${tbState.otherType.includes('복직') ? 'selected' : ''}>복직자 검진 (6개월 이상 휴직/파견 후 1개월 이내)</option>
-                <option value="개별 흉부X선 검진" ${tbState.otherType.includes('개별') ? 'selected' : ''}>개별 흉부X선 엑스레이 실시</option>
               </select>
             </div>
             <div class="tb-field">
@@ -594,16 +624,20 @@ function renderTasks() {
 // 결핵검진 입력 필드 이벤트 핸들러
 $('tasks').addEventListener('input', e => {
   if (e.target.id === 'tbEvenCheck') tbState.evenDone = e.target.checked;
+  if (e.target.id === 'tbEvenDate') tbState.evenDate = e.target.value;
   if (e.target.id === 'tbEvenHosp') tbState.evenHospital = e.target.value.trim();
   if (e.target.id === 'tbOddCheck') tbState.oddDone = e.target.checked;
   if (e.target.id === 'tbOddDate') tbState.oddDate = e.target.value;
-  if (e.target.id === 'tbOddType') tbState.oddType = e.target.value.trim();
+  if (e.target.id === 'tbOddHospital') tbState.oddHospital = e.target.value.trim();
   if (e.target.id === 'tbOtherSelect') tbState.otherType = e.target.value;
   if (e.target.id === 'tbOtherDate') tbState.otherDate = e.target.value;
 });
 
 // 파일 선택 변경 이벤트
 $('tasks').addEventListener('change', async e => {
+  if (e.target.id === 'tbEvenDate') tbState.evenDate = e.target.value;
+  if (e.target.id === 'tbOddDate') tbState.oddDate = e.target.value;
+  if (e.target.id === 'tbOtherDate') tbState.otherDate = e.target.value;
   const input = e.target.closest('.file-input');
   if (!input || !input.files || !input.files[0]) return;
   const taskName = input.dataset.task;
@@ -618,7 +652,7 @@ $('tasks').addEventListener('change', async e => {
 });
 
 $('tasks').addEventListener('click', e => {
-  // 결핵검진 탭 및 빠른 입력 버튼 클릭 처리
+  // 결핵검진 탭 및 검진방식 버튼 클릭 처리
   if (e.target.closest('.tb-config-box')) {
     const tabBtn = e.target.closest('[data-tb-tab]');
     if (tabBtn) {
@@ -627,16 +661,10 @@ $('tasks').addEventListener('click', e => {
       renderTasks();
       return;
     }
-    const quickBtn = e.target.closest('[data-tb-quick]');
-    if (quickBtn) {
+    const methodBtn = e.target.closest('[data-tb-method]');
+    if (methodBtn) {
       e.stopPropagation();
-      if (quickBtn.dataset.tbQuick === 'school') {
-        tbState.oddDate = '2026-09-15';
-        tbState.oddType = '교내 출장검진 (9/15)';
-      } else {
-        tbState.oddDate = U.fmt(new Date()).slice(0, 10);
-        tbState.oddType = '개별 병원 흉부X선';
-      }
+      tbState.oddMethod = methodBtn.dataset.tbMethod;
       renderTasks();
       return;
     }
