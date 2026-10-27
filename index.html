@@ -76,8 +76,30 @@
   .task.teacher-task { border-color: #bae6fd; }
   .task.teacher-task.on { border-color: #0284c7; background: #f0f9ff; }
   .task.teacher-task.on .box { background: #0284c7; border-color: #0284c7; }
+  .tag.cpr-tag { background: #ffe4e6; color: #be123c; border: 1.5px solid #fecdd3; font-size: 14px; font-weight: 700; }
+  .task.cpr-task { border-color: #fecdd3; }
+  .task.cpr-task.on { border-color: #e11d48; background: #fff1f2; }
+  .task.cpr-task.on .box { background: #e11d48; border-color: #e11d48; }
   .task.disabled-role { background: #f8fafc; opacity: .75; cursor: not-allowed; }
   .task.disabled-role:hover { border-color: var(--line); transform: none; }
+
+  /* 이수증 파일 첨부 UI */
+  .file-attach-box { margin-top: 10px; padding: 10px 14px; border-radius: 12px; background: #ffffff; border: 1.5px dashed #cbd5e1;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; cursor: default; }
+  .file-attach-box.has-file { border-style: solid; border-color: #2f6fed; background: #f0f7ff; }
+  .file-attach-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; color: #2f6fed;
+    background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 9px; padding: 7px 14px; cursor: pointer; transition: all .15s; }
+  .file-attach-btn:hover { background: #dbeafe; border-color: #2f6fed; }
+  .file-attach-btn:active { transform: scale(.97); }
+  .file-attach-hint { font-size: 13px; color: #64748b; }
+  .file-preview-wrap { display: flex; align-items: center; gap: 10px; font-size: 14px; max-width: 100%; overflow: hidden; }
+  .file-thumb { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; border: 1.5px solid #cbd5e1; flex-shrink: 0; background: #f8fafc; }
+  .file-pdf-icon { width: 40px; height: 40px; border-radius: 8px; background: #fee2e2; color: #dc2626; display: grid; place-items: center; font-size: 18px; font-weight: 800; flex-shrink: 0; }
+  .file-info-text { display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+  .file-name { font-weight: 700; font-size: 14px; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
+  .file-size { font-size: 12px; color: #64748b; margin-top: 1px; }
+  .btn-file-del { background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c; border-radius: 8px; padding: 5px 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .15s; }
+  .btn-file-del:hover { background: #fecaca; }
 
   .bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--line);
     padding: 16px 24px; display: flex; justify-content: center; z-index: 10; }
@@ -151,7 +173,7 @@
 
   <section id="home" hidden>
     <p class="ask">이수증을<br><span>제출하셨나요?</span></p>
-    <p class="home-note">이수증을 별도로 제출한 뒤, 이 화면에서 제출 여부를 등록해 주세요.<br>이 앱에서는 파일을 업로드하지 않습니다.</p>
+    <p class="home-note">이수증 파일(사진/PDF)을 직접 첨부하거나, 제출 여부를 등록해 주세요.<br>첨부 파일은 관리자 확인용으로 안전하게 수합됩니다.</p>
     <button id="startBtn">제출 여부 등록하기</button>
   </section>
 
@@ -211,7 +233,7 @@
 <script>
 const $ = id => document.getElementById(id);
 const { esc, CFG, session } = U;
-let data = null, me = null, picked = new Set(), busy = false, idleTimer = null, doneTimer = null;
+let data = null, me = null, picked = new Set(), pickedFiles = new Map(), busy = false, idleTimer = null, doneTimer = null;
 
 $('title').textContent = CFG.title || '교직원 연수 이수증 수합';
 $('className').textContent = CFG.className || '';
@@ -257,6 +279,7 @@ $('students').addEventListener('click', e => {
   if (!b) return;
   me = data.students[+b.dataset.i];
   picked.clear();
+  pickedFiles.clear();
   renderTasks();
   show('step2');
   armIdle();
@@ -265,6 +288,57 @@ $('students').addEventListener('click', e => {
 const isSeniorTask = name => /고위직|대면/.test(name);
 const isViolenceTask = name => /4대\s*폭력|폭력\s*예방|성희롱|성폭력|가정폭력/.test(name);
 const isMulticulturalTask = name => /다문화/.test(name);
+const isCprTask = name => /심폐소생술|응급처치|CPR/i.test(name);
+
+// 파일 크기 표시
+function formatSize(bytes) {
+  if (!bytes) return '0 B';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+// 이미지 리사이즈/압축 또는 PDF 로드
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    if (file.type === 'application/pdf') {
+      if (file.size > 8 * 1024 * 1024) return reject(new Error('PDF 파일은 8MB 이하로 첨부해 주세요.'));
+      const reader = new FileReader();
+      reader.onload = () => resolve({ name: file.name, type: file.type, size: file.size, dataUrl: reader.result });
+      reader.onerror = () => reject(new Error('PDF 파일을 읽을 수 없습니다.'));
+      reader.readAsDataURL(file);
+      return;
+    }
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = e => {
+      img.onload = () => {
+        const maxDim = 1280;
+        let w = img.width, h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+          else { w = Math.round((w * maxDim) / h); h = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        const estSize = Math.round((dataUrl.length - dataUrl.indexOf(',') - 1) * 3 / 4);
+        resolve({
+          name: (file.name ? file.name.replace(/\.[^/.]+$/, "") : "이수증") + ".jpg",
+          type: 'image/jpeg',
+          size: estSize,
+          dataUrl
+        });
+      };
+      img.onerror = () => reject(new Error('이미지를 읽을 수 없습니다. 올바른 이미지 파일인지 확인하세요.'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('파일을 읽는 중 오류가 발생했습니다.'));
+    reader.readAsDataURL(file);
+  });
+}
 
 // 교원(교사) 및 행정직 직종 판별
 function getStaffType(name) {
@@ -291,6 +365,7 @@ function renderTasks() {
     const isSenior = isSeniorTask(t.name);
     const isGenViolence = isViolenceTask(t.name) && !isSenior;
     const isMulti = isMulticulturalTask(t.name);
+    const isCpr = isCprTask(t.name);
 
     let typeTag = '';
     let subDesc = '';
@@ -301,6 +376,10 @@ function renderTasks() {
       typeTag = '<span class="tag senior-tag">👑 고위직 대면 필수</span>';
       subDesc = '<div class="sub-desc" style="color:#7c3aed;">※ 기관장·교장·교감·행정실장 등 고위직 대상 대면교육 이수증</div>';
       extraClass = 'senior';
+    } else if (isCpr) {
+      typeTag = '<span class="tag cpr-tag">❤️ 실습·이론</span>';
+      subDesc = '<div class="sub-desc" style="color:#be123c;">※ 전 교직원 매년 의무 이수 (심폐소생술 및 응급처치 교육)</div>';
+      extraClass = 'cpr-task';
     } else if (isGenViolence) {
       typeTag = '<span class="tag general-tag">일반 교직원용</span>';
       subDesc = '<div class="sub-desc" style="color:#64748b;">※ 일반 교직원 이수 (고위직 제외)</div>';
@@ -320,26 +399,82 @@ function renderTasks() {
     const side = isDone ? '<span class="tag">제출 등록 완료</span>'
       : t.due ? `<span class="due ${late ? 'late' : ''}">마감 ${esc(U.due(t.due))}${late ? ' 지남' : ''}</span>` : '';
 
-    return `<button class="task ${extraClass} ${isDone ? 'done' : on ? 'on' : ''}" data-i="${i}" ${isDisabled ? 'disabled' : ''}>
-      <span class="box">${isDone || on ? '✓' : ''}</span>
-      <div class="name-wrap">
-        <div class="name">${esc(t.name)}</div>
-        ${subDesc}
+    const fileObj = pickedFiles.get(t.name);
+    const isPdf = fileObj && fileObj.type && fileObj.type.includes('pdf');
+
+    const fileBoxHtml = on ? `
+      <div class="file-attach-box ${fileObj ? 'has-file' : ''}" data-task="${esc(t.name)}" style="width:100%;">
+        ${fileObj ? `
+          <div class="file-preview-wrap">
+            ${isPdf ? `<span class="file-pdf-icon">PDF</span>` : `<img class="file-thumb" src="${fileObj.dataUrl}" alt="미리보기">`}
+            <div class="file-info-text">
+              <span class="file-name" title="${esc(fileObj.name)}">📎 ${esc(fileObj.name)}</span>
+              <span class="file-size">${formatSize(fileObj.size)}</span>
+            </div>
+          </div>
+          <button type="button" class="btn-file-del" data-action="delfile" data-task="${esc(t.name)}">✕ 파일 삭제</button>
+        ` : `
+          <div class="file-preview-wrap">
+            <span class="file-attach-hint">📎 이수증 파일(사진·PDF) 첨부 (선택)</span>
+          </div>
+          <label class="file-attach-btn" data-action="pickfile" data-task="${esc(t.name)}">
+            📁 파일 첨부
+            <input type="file" accept="image/*,application/pdf" class="file-input" data-task="${esc(t.name)}" style="display:none;">
+          </label>
+        `}
       </div>
-      <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0;">
-        ${typeTag}
-        ${side}
+    ` : '';
+
+    return `<div role="button" tabindex="0" class="task ${extraClass} ${isDone ? 'done' : on ? 'on' : ''}" data-i="${i}" ${isDisabled ? 'style="pointer-events:none; opacity:.7;"' : ''} style="flex-direction:column; align-items:stretch;">
+      <div style="display:flex; align-items:center; gap:16px; width:100%;">
+        <span class="box">${isDone || on ? '✓' : ''}</span>
+        <div class="name-wrap">
+          <div class="name">${esc(t.name)}</div>
+          ${subDesc}
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0;">
+          ${typeTag}
+          ${side}
+        </div>
       </div>
-    </button>`;
+      ${fileBoxHtml}
+    </div>`;
   }).join('') || '<div class="msg">지금 받는 연수 이수증이 없습니다.</div>';
 
   $('submitBtn').disabled = picked.size === 0;
   $('submitBtn').textContent = picked.size ? `${picked.size}개 제출 등록하기` : '연수를 선택해 주세요';
 }
 
+// 파일 선택 변경 이벤트
+$('tasks').addEventListener('change', async e => {
+  const input = e.target.closest('.file-input');
+  if (!input || !input.files || !input.files[0]) return;
+  const taskName = input.dataset.task;
+  const file = input.files[0];
+  try {
+    const fileData = await compressImage(file);
+    pickedFiles.set(taskName, fileData);
+    renderTasks();
+  } catch (err) {
+    alert(err.message || '파일을 불러오지 못했습니다.');
+  }
+});
+
 $('tasks').addEventListener('click', e => {
+  // 파일 첨부 또는 삭제 클릭 시 태스크 선택 토글 방지
+  const delBtn = e.target.closest('[data-action="delfile"]');
+  if (delBtn) {
+    e.stopPropagation();
+    pickedFiles.delete(delBtn.dataset.task);
+    renderTasks();
+    return;
+  }
+  if (e.target.closest('.file-attach-box') || e.target.closest('.file-input') || e.target.closest('.file-attach-btn')) {
+    return;
+  }
+
   const b = e.target.closest('.task');
-  if (!b || b.disabled) return;
+  if (!b || b.dataset.i == null) return;
   const name = data.tasks[+b.dataset.i].name;
 
   // 다문화 교육은 교사만 선택 가능
@@ -387,25 +522,44 @@ $('submitBtn').addEventListener('click', async () => {
   const pickedList = [...picked];
   const hasSeniorPicked = pickedList.some(t => isSeniorTask(t));
   const hasMultiPicked = pickedList.some(t => isMulticulturalTask(t));
+  const hasCprPicked = pickedList.some(t => isCprTask(t));
+  const attachedCount = pickedList.filter(t => pickedFiles.has(t)).length;
 
-  let confirmMsg = `${me.name} 님, 선택한 ${picked.size}개 연수의 이수증을 별도로 제출하셨나요?`;
+  let confirmMsg = `${me.name} 님, 선택한 ${picked.size}개 연수의 이수증을 제출 등록할까요?`;
+  if (attachedCount > 0) {
+    confirmMsg += `\n(첨부 파일 ${attachedCount}개 포함)`;
+  }
   if (hasSeniorPicked) {
-    confirmMsg += `\n\n[안내] 👑 '고위직 대면교육' 이수 항목이 선택되었습니다.\n(기관장·교장·교감·행정실장 등 고위직 대상 대면교육으로 등록됩니다)`;
+    confirmMsg += `\n\n[안내] 👑 '고위직 대면교육' 이수 항목이 포함되어 있습니다.\n(기관장·교장·교감·행정실장 등 고위직 대상 대면교육으로 등록됩니다)`;
+  }
+  if (hasCprPicked) {
+    confirmMsg += `\n\n[안내] ❤️ '심폐소생술 및 응급처치 교육' 이수 항목이 포함되어 있습니다.`;
   }
   if (hasMultiPicked) {
-    confirmMsg += `\n\n[안내] 👨‍🏫 '다문화 교육' 이수 항목이 선택되었습니다. (교사 전용 연수)`;
+    confirmMsg += `\n\n[안내] 👨‍🏫 '다문화 교육' 이수 항목이 포함되어 있습니다. (교사 전용 연수)`;
   }
-  confirmMsg += `\n\n확인을 누르면 제출 여부만 기록됩니다.`;
   if (!confirm(confirmMsg)) return;
   busy = true;
   clearTimeout(idleTimer);
   $('submitBtn').disabled = true;
   $('submitBtn').textContent = '등록하는 중…';
+
+  const filesMap = {};
+  pickedList.forEach(t => {
+    if (pickedFiles.has(t)) filesMap[t] = pickedFiles.get(t);
+  });
+
   try {
-    const res = await Api.call('submit', { no: me.no, name: me.name, tasks: [...picked] });
-    res.added.forEach(task => data.records.push({ no: me.no, name: me.name, task }));
+    const res = await Api.call('submit', { no: me.no, name: me.name, tasks: pickedList, files: filesMap });
+    res.added.forEach(task => {
+      const f = filesMap[task];
+      data.records.push({ no: me.no, name: me.name, task, memo: f ? '이수증: ' + f.name : '', file: f });
+    });
     $('doneTitle').textContent = `${me.name} 님, 제출 여부가 등록되었습니다!`;
-    $('doneList').innerHTML = res.added.map(t => `<li>✅ ${esc(t)}</li>`).join('');
+    $('doneList').innerHTML = res.added.map(t => {
+      const f = filesMap[t];
+      return `<li>✅ ${esc(t)}${f ? ` <small style="display:block; font-size:16px; color:#2563eb; margin-top:4px;">📎 이수증 파일 첨부됨: ${esc(f.name)}</small>` : ''}</li>`;
+    }).join('');
     $('doneNote').textContent = res.dups.length ? `이미 제출되어 있던 항목: ${res.dups.join(', ')}` : '';
     show('done');
     let n = 5;
@@ -427,6 +581,7 @@ function reset() {
   clearTimeout(idleTimer);
   me = null;
   picked.clear();
+  pickedFiles.clear();
   if (data) show('home');
   load(true);
 }

@@ -90,11 +90,37 @@ function staff_(d, no, name) {
 function doGet() {
   return json_({ ok: true, data: { service: '교직원 연수 이수증 수합', message: '화면에서 제출 여부를 등록하세요.' } });
 }
+function getOrCreateFolder_(name) {
+  const folders = DriveApp.getFoldersByName(name);
+  if (folders.hasNext()) return folders.next();
+  return DriveApp.createFolder(name);
+}
+
+function saveFileToDrive_(fileData, s, task) {
+  if (!fileData || !fileData.dataUrl) return '';
+  try {
+    const parts = fileData.dataUrl.split(',');
+    if (parts.length < 2) return '';
+    const base64 = parts[1];
+    const contentType = (fileData.type || 'image/jpeg');
+    const ext = fileData.name && fileData.name.lastIndexOf('.') > 0 ? fileData.name.slice(fileData.name.lastIndexOf('.')) : (contentType.indexOf('pdf') >= 0 ? '.pdf' : '.jpg');
+    const blob = Utilities.newBlob(Utilities.base64Decode(base64), contentType, `${s.no}번_${s.name}_${task}_이수증${ext}`);
+    const folder = getOrCreateFolder_('교직원연수_이수증첨부');
+    const driveFile = folder.createFile(blob);
+    try {
+      driveFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (ignore) {}
+    return driveFile.getUrl();
+  } catch (err) {
+    return '파일저장오류: ' + String(err.message || err);
+  }
+}
+
 function doPost(e) {
   const lock = LockService.getScriptLock();
   let locked = false;
   try {
-    if (!e || !e.postData || e.postData.contents.length > 250000) throw new Error('요청을 확인하세요.');
+    if (!e || !e.postData || e.postData.contents.length > 15000000) throw new Error('요청을 확인하세요. (용량 초과)');
     const q = JSON.parse(e.postData.contents);
     if (!q || typeof q !== 'object' || Array.isArray(q)) throw new Error('요청 형식이 올바르지 않습니다.');
     const allowed = ['getStudentData','submit','verifyPin','getDashboard','toggleRecord','addTask','deleteTask','saveStudents','changePin'];
@@ -145,9 +171,18 @@ function doPost(e) {
         const tasks = [...new Set(q.tasks.map(t => text_(t, '연수명', 120)))];
         if (tasks.some(t => !d.tasks.some(x => x.name === t))) throw new Error('현재 등록되지 않은 연수가 있습니다. 화면을 새로고침하세요.');
         const added = [], dups = [], time = stamp_();
+        const filesMap = (q.files && typeof q.files === 'object') ? q.files : {};
         tasks.forEach(task => {
           if (d.records.some(r => r.no === s.no && r.name === s.name && r.task === task)) dups.push(task);
-          else { sh.appendRow([time, cell_(s.no), cell_(s.name), cell_(task), '']); added.push(task); }
+          else {
+            let memo = '';
+            if (filesMap[task]) {
+              const fileUrl = saveFileToDrive_(filesMap[task], s, task);
+              memo = fileUrl ? '이수증: ' + fileUrl : (filesMap[task].name ? '첨부: ' + filesMap[task].name : '이수증 첨부');
+            }
+            sh.appendRow([time, cell_(s.no), cell_(s.name), cell_(task), cell_(memo)]);
+            added.push(task);
+          }
         });
         out = { added, dups, time };
       } else {
@@ -160,7 +195,6 @@ function doPost(e) {
         if (!removed) sh.appendRow([stamp_(), cell_(s.no), cell_(s.name), cell_(task), '담당자 확인']);
         out = { submitted: !removed };
       }
-    }
     return json_({ ok: true, data: out });
   } catch (err) {
     return json_({ ok: false, error: String(err.message || err), code: err.code || 'ERROR' });

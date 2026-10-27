@@ -124,6 +124,8 @@
   #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #1d2433; color: #fff;
     padding: 10px 18px; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 99; }
   #toast.show { opacity: 1; }
+  .modal { position: fixed; inset: 0; background: rgba(15,23,42,.6); display: grid; place-items: center; z-index: 100; padding: 16px; }
+  .modal-box { background: #fff; border-radius: 18px; padding: 22px; width: min(640px, 95vw); max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,.2); }
   [hidden] { display: none !important; }
   @media (max-width: 800px) {
     header { padding: 12px 16px 0; } main { padding: 16px 16px 60px; }
@@ -177,7 +179,8 @@
           <span><span class="dot on"></span> 교직원 등록</span>
           <span><span class="dot on manual"></span> 담당자 확인</span>
           <span><span class="dot"></span> 미제출</span>
-          <span>· 칸을 누르면 제출 처리 / 취소</span>
+          <span><span style="font-size:13px; vertical-align:middle;">📎</span> 이수증 파일 첨부</span>
+          <span>· 칸을 누르면 이수증 확인 및 제출 처리/취소</span>
         </div>
         <div class="row">
           <label><input type="checkbox" id="onlyMiss"> 미제출 교직원만</label>
@@ -203,6 +206,7 @@
           <button type="button" class="btn" id="tplGenViolence">4대 폭력 예방교육 (일반)</button>
           <button type="button" class="btn" id="tplSeniorViolence" style="border-color:#d8b4fe; color:#6b21a8; font-weight:600;">👑 4대 폭력 예방교육 (고위직 대면)</button>
           <button type="button" class="btn" id="tplMulticultural" style="border-color:#bae6fd; color:#0369a1; font-weight:600;">👨‍🏫 다문화 교육 (교사 전용)</button>
+          <button type="button" class="btn" id="tplCpr" style="border-color:#fecdd3; color:#be123c; font-weight:600;">❤️ 심폐소생술 및 응급처치 교육</button>
         </div>
         <p class="hint" style="margin-top:8px;">추가하면 교직원 화면의 제출 목록에 바로 나타납니다. 마감일은 선택 사항입니다.</p>
       </div>
@@ -280,6 +284,25 @@
     </section>
   </main>
 </div>
+
+<div id="certModal" class="modal" hidden>
+  <div class="modal-box">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <h3 id="certTitle" style="margin:0; font-size:18px; font-weight:800; display:flex; align-items:center; gap:8px;">📄 이수증 확인</h3>
+      <button type="button" class="btn" id="certClose">✕ 닫기</button>
+    </div>
+    <div id="certMeta" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px 16px; font-size:14px; line-height:1.7; margin-bottom:14px;"></div>
+    <div id="certBody" style="text-align:center; min-height:160px; background:#f1f5f9; border-radius:12px; padding:16px; display:grid; place-items:center; margin-bottom:16px;"></div>
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+      <button type="button" class="btn danger" id="certCancelBtn">제출 기록 취소</button>
+      <div style="display:flex; gap:8px;">
+        <a class="btn primary" id="certOpenBtn" target="_blank" rel="noopener" hidden>원본 파일 열기 / 다운로드</a>
+        <button type="button" class="btn" id="certDoneBtn">확인</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script src="config.js"></script>
@@ -356,6 +379,63 @@ function donut(pct) {
     `<text x="32" y="37" text-anchor="middle">${pct}%</text></svg>`;
 }
 
+let curModalTarget = null;
+
+function openCertModal(s, task, r) {
+  curModalTarget = { s, task };
+  $('certTitle').innerHTML = `📄 이수증 확인 — <b>${esc(s.name)}</b> 님`;
+  let metaHtml = `<div><b>교직원:</b> ${esc(s.no)}번 ${esc(s.name)}</div>`;
+  metaHtml += `<div><b>연수 항목:</b> ${esc(task)}</div>`;
+  metaHtml += `<div><b>제출 일시:</b> ${esc(r.time || '기록 없음')}</div>`;
+  if (r.memo) metaHtml += `<div><b>비고 / 메모:</b> ${esc(r.memo)}</div>`;
+  $('certMeta').innerHTML = metaHtml;
+
+  let openUrl = '';
+  if (r.file && r.file.dataUrl) {
+    openUrl = r.file.dataUrl;
+    if (r.file.type && r.file.type.includes('pdf')) {
+      $('certBody').innerHTML = `<div style="padding:24px 0;"><div style="font-size:48px; margin-bottom:10px;">📄</div><div style="font-weight:700; font-size:16px;">PDF 형식 이수증 파일</div><div class="hint" style="margin-top:6px;">${esc(r.file.name || 'document.pdf')}</div></div>`;
+    } else {
+      $('certBody').innerHTML = `<img src="${r.file.dataUrl}" alt="이수증 미리보기" style="max-width:100%; max-height:460px; border-radius:10px; object-fit:contain; box-shadow:0 2px 10px rgba(0,0,0,.12);">`;
+    }
+  } else if (r.memo && /https?:\/\/[^\s]+/.test(r.memo)) {
+    const m = /https?:\/\/[^\s]+/.exec(r.memo);
+    openUrl = m ? m[0] : '';
+    $('certBody').innerHTML = `<div style="padding:24px 0;"><div style="font-size:48px; margin-bottom:10px;">📁</div><div style="font-weight:700; font-size:16px;">구글 드라이브에 저장된 이수증 파일</div><div class="hint" style="margin-top:8px;">아래 '원본 파일 열기' 버튼을 눌러 확인하세요.</div></div>`;
+  } else {
+    $('certBody').innerHTML = `<div style="padding:24px 0; color:#64748b;"><div style="font-size:36px; margin-bottom:8px;">📝</div>별도 첨부 파일 없이 제출 여부만 등록되었습니다.<br><span style="font-size:13px; color:#94a3b8;">비고: ${esc(r.memo || '없음')}</span></div>`;
+  }
+
+  if (openUrl) {
+    $('certOpenBtn').hidden = false;
+    $('certOpenBtn').href = openUrl;
+    if (openUrl.startsWith('data:')) {
+      $('certOpenBtn').setAttribute('download', `${s.no}번_${s.name}_${task}_이수증`);
+    } else {
+      $('certOpenBtn').removeAttribute('download');
+    }
+  } else {
+    $('certOpenBtn').hidden = true;
+  }
+
+  $('certModal').hidden = false;
+}
+
+$('certCancelBtn').addEventListener('click', async () => {
+  if (!curModalTarget) return;
+  const { s, task } = curModalTarget;
+  if (!confirm(`${s.no}번 ${s.name} — ‘${task}’ 제출 기록을 취소할까요?`)) return;
+  $('certModal').hidden = true;
+  try {
+    await Api.call('toggleRecord', { pin, no: s.no, name: s.name, task });
+    await refresh();
+    toast('제출 기록을 취소했습니다');
+  } catch (err) { alert('처리하지 못했습니다: ' + (err.message || err)); }
+});
+$('certClose').addEventListener('click', () => $('certModal').hidden = true);
+$('certDoneBtn').addEventListener('click', () => $('certModal').hidden = true);
+$('certModal').addEventListener('click', e => { if (e.target.id === 'certModal') $('certModal').hidden = true; });
+
 function renderStatus() {
   const total = D.students.length;
   $('updated').textContent = D.updated ? `${D.updated} 기준` : '';
@@ -366,11 +446,15 @@ function renderStatus() {
     const late = /^\d{4}-\d{2}-\d{2}$/.test(t.due) && t.due < today() && n < total;
     const isSenior = /고위직|대면/.test(t.name);
     const isMulti = /다문화/.test(t.name);
+    const isCpr = /심폐소생술|응급처치|CPR/i.test(t.name);
     let cardStyle = '';
     let roleBadge = '';
     if (isSenior) {
       cardStyle = 'border-color:#d8b4fe; background:#faf5ff;';
       roleBadge = '<div style="color:#7c3aed; font-size:12px; font-weight:700; margin-top:1px;">고위직(교장·교감·행정실장) 대면 필수</div>';
+    } else if (isCpr) {
+      cardStyle = 'border-color:#fecdd3; background:#fff1f2;';
+      roleBadge = '<div style="color:#be123c; font-size:12px; font-weight:700; margin-top:1px;">❤️ 전 교직원 매년 의무 이수</div>';
     } else if (isMulti) {
       cardStyle = 'border-color:#bae6fd; background:#f0f9ff;';
       roleBadge = '<div style="color:#0369a1; font-size:12px; font-weight:700; margin-top:1px;">👨‍🏫 교사(교원) 전용 연수</div>';
@@ -379,7 +463,7 @@ function renderStatus() {
     return `<div class="card ${t.name === sel ? 'sel' : ''} ${total && n === total ? 'full' : ''}" data-i="${i}" style="${cardStyle}">
       ${donut(pct)}
       <div style="min-width:0">
-        <div class="t" title="${esc(t.name)}">${isSenior ? '👑 ' : isMulti ? '👨‍🏫 ' : ''}${esc(t.name)}</div>
+        <div class="t" title="${esc(t.name)}">${isSenior ? '👑 ' : isCpr ? '❤️ ' : isMulti ? '👨‍🏫 ' : ''}${esc(t.name)}</div>
         ${roleBadge}
         <div class="m"><b>${n}</b> / ${total}명 제출</div>
         <div class="m ${late ? 'late' : ''}">${t.due ? '마감 ' + esc(U.due(t.due)) + (late ? ' (지남)' : '') : '마감일 없음'}</div>
@@ -402,9 +486,11 @@ function renderStatus() {
     `<thead><tr><th class="stu">교직원</th>${D.tasks.map(t => {
       const isSenior = /고위직|대면/.test(t.name);
       const isMulti = /다문화/.test(t.name);
+      const isCpr = /심폐소생술|응급처치|CPR/i.test(t.name);
       let thStyle = '';
       let prefix = '';
       if (isSenior) { thStyle = 'color:#6b21a8; background:#f5f0ff;'; prefix = '👑 '; }
+      else if (isCpr) { thStyle = 'color:#be123c; background:#fff1f2;'; prefix = '❤️ '; }
       else if (isMulti) { thStyle = 'color:#0369a1; background:#f0f9ff;'; prefix = '👨‍🏫 '; }
       return `<th class="${t.name === sel ? 'selcol' : ''}" style="${thStyle}">${prefix}${esc(t.name)}</th>`;
     }).join('')}<th>제출률</th></tr></thead>` +
@@ -414,8 +500,9 @@ function renderStatus() {
       const cells = D.tasks.map((t, j) => {
         const r = map.get(K(s.no, s.name, t.name));
         if (r) n++;
-        const tip = r ? `${r.time} 제출${r.memo ? ' · ' + r.memo : ''}` : '미제출';
-        return `<td class="c" data-s="${idx}" data-t="${j}" title="${esc(tip)}"><span class="dot ${r ? 'on' : ''} ${r && r.memo ? 'manual' : ''}"></span></td>`;
+        const hasFile = r && (r.file || (r.memo && /이수증:|첨부:|^https?:\/\//.test(r.memo)));
+        const tip = r ? `${r.time} 제출${r.memo ? ' · ' + r.memo : ''}${hasFile ? ' (클릭 시 이수증 확인)' : ''}` : '미제출 (클릭 시 제출 처리)';
+        return `<td class="c" data-s="${idx}" data-t="${j}" title="${esc(tip)}"><span class="dot ${r ? 'on' : ''} ${r && r.memo ? 'manual' : ''}"></span>${hasFile ? '<span style="font-size:12px; margin-left:3px; vertical-align:middle;" title="이수증 파일 첨부됨">📎</span>' : ''}</td>`;
       }).join('');
       const pct = nT ? Math.round(n / nT * 100) : 0;
       return `<tr><td class="stu"><small>${esc(s.no)}</small>${esc(s.name)}</td>${cells}
@@ -435,7 +522,16 @@ $('table').addEventListener('click', async e => {
   const td = e.target.closest('td.c');
   if (!td) return;
   const s = D.students[+td.dataset.s], task = D.tasks[+td.dataset.t].name;
-  const has = map.has(K(s.no, s.name, task));
+  const r = map.get(K(s.no, s.name, task));
+  const has = !!r;
+  const hasFile = r && (r.file || (r.memo && (r.memo.includes('http') || r.memo.includes('이수증:') || r.memo.includes('첨부:'))));
+
+  if (has && hasFile) {
+    // 첨부된 이수증이 있는 경우 미리보기 모달을 띄움
+    openCertModal(s, task, r);
+    return;
+  }
+
   const q = has ? `${s.no}번 ${s.name} — ‘${task}’ 제출 기록을 취소할까요?`
                 : `${s.no}번 ${s.name} — ‘${task}’을(를) 제출한 것으로 처리할까요?\n(비고에 ‘담당자 확인’으로 기록됩니다)`;
   if (!confirm(q)) return;
@@ -517,6 +613,10 @@ $('tplSeniorViolence').addEventListener('click', () => {
 $('tplMulticultural').addEventListener('click', () => {
   $('newTask').value = '다문화 교육 (교사 전용)';
   addTask('다문화 교육 (교사 전용)');
+});
+$('tplCpr').addEventListener('click', () => {
+  $('newTask').value = '심폐소생술 및 응급처치 교육';
+  addTask('심폐소생술 및 응급처치 교육');
 });
 
 $('taskList').addEventListener('click', async e => {

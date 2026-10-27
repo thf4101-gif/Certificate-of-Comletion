@@ -6,7 +6,7 @@
 (function () {
   const CFG = window.APP_CONFIG || {};
   const URL_KEY = 'trainingCertificateTracker.apiUrl';
-  const DEMO_KEY = 'trainingCertificateTracker.demo.v3';
+  const DEMO_KEY = 'trainingCertificateTracker.demo.v4';
 
   const store = {
     get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
@@ -59,8 +59,9 @@
       students: staffList,
       tasks: [
         { name: '개인정보 보호 연수', due: day(-1) },
-        { name: '4대 폭력 예방교육 (일반)', due: day(2) },
-        { name: '4대 폭력 예방교육 (고위직 대면)', due: day(2) },
+        { name: '심폐소생술 및 응급처치 교육', due: day(2) },
+        { name: '4대 폭력 예방교육 (일반)', due: day(3) },
+        { name: '4대 폭력 예방교육 (고위직 대면)', due: day(3) },
         { name: '다문화 교육 (교사 전용)', due: day(4) },
         { name: '아동학대 신고의무자 교육', due: day(5) },
         { name: '장애인식 개선 교육', due: day(7) },
@@ -76,9 +77,17 @@
 
   const demo = {
     getStudentData() { const d = dload(); return { students: d.students, tasks: d.tasks, records: d.records }; },
-    submit({ no, name, tasks }) {
+    submit({ no, name, tasks, files }) {
       const d = dload(), time = fmt(new Date()), added = [], dups = [];
-      tasks.forEach(t => { if (has(d, no, name, t)) dups.push(t); else { added.push(t); d.records.push({ time, no, name, task: t, memo: '' }); } });
+      tasks.forEach(t => {
+        if (has(d, no, name, t)) dups.push(t);
+        else {
+          added.push(t);
+          const f = files && files[t] ? files[t] : null;
+          const memoText = f ? (f.name ? '파일첨부: ' + f.name : '이수증 첨부') : '';
+          d.records.push({ time, no, name, task: t, memo: memoText, file: f });
+        }
+      });
       dsave(d); return { added, dups, time };
     },
     verifyPin({ pin }) { if (String(pin) !== dload().pin) throw pinErr(); return { sheetName: '', sheetUrl: '' }; },
