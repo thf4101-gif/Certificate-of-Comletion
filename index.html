@@ -80,8 +80,30 @@
   .task.cpr-task { border-color: #fecdd3; }
   .task.cpr-task.on { border-color: #e11d48; background: #fff1f2; }
   .task.cpr-task.on .box { background: #e11d48; border-color: #e11d48; }
+  .tag.tb-tag { background: #ccfbf1; color: #0f766e; border: 1.5px solid #99f6e4; font-size: 14px; font-weight: 700; }
+  .task.tb-task { border-color: #99f6e4; }
+  .task.tb-task:hover { border-color: #0d9488; }
+  .task.tb-task.on { border-color: #0d9488; background: #f0fdfa; }
+  .task.tb-task.on .box { background: #0d9488; border-color: #0d9488; }
   .task.disabled-role { background: #f8fafc; opacity: .75; cursor: not-allowed; }
   .task.disabled-role:hover { border-color: var(--line); transform: none; }
+
+  /* 활동성 결핵검진 설정 박스 */
+  .tb-config-box { margin-top: 12px; padding: 14px 16px; border-radius: 14px; background: #ffffff; border: 2px solid #5eead4;
+    text-align: left; cursor: default; }
+  .tb-guide-banner { background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 10px; padding: 10px 14px; font-size: 13.5px; color: #115e59; line-height: 1.65; margin-bottom: 12px; }
+  .tb-guide-banner b { color: #0f766e; }
+  .tb-tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .tb-tab-btn { flex: 1; min-width: 130px; padding: 10px 8px; border-radius: 10px; border: 2px solid #cbd5e1; background: #f8fafc; font-size: 13.5px; font-weight: 700; color: #334155; cursor: pointer; text-align: center; transition: all .15s; }
+  .tb-tab-btn:hover { border-color: #0d9488; color: #0d9488; }
+  .tb-tab-btn.active { border-color: #0d9488; background: #ccfbf1; color: #0f766e; }
+  .tb-panel { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; font-size: 14px; }
+  .tb-field { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .tb-field label { font-size: 13px; font-weight: 700; color: #475569; }
+  .tb-field input, .tb-field select { padding: 9px 12px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 14px; font-family: inherit; }
+  .tb-field input:focus, .tb-field select:focus { outline: none; border-color: #0d9488; }
+  .tb-quick-btn { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 8px; border: 1px solid #99f6e4; background: #ffffff; color: #0f766e; font-size: 13px; font-weight: 700; cursor: pointer; transition: all .15s; }
+  .tb-quick-btn:hover { background: #ccfbf1; }
 
   /* 이수증 파일 첨부 UI */
   .file-attach-box { margin-top: 10px; padding: 10px 14px; border-radius: 12px; background: #ffffff; border: 1.5px dashed #cbd5e1;
@@ -289,6 +311,35 @@ const isSeniorTask = name => /고위직|대면/.test(name);
 const isViolenceTask = name => /4대\s*폭력|폭력\s*예방|성희롱|성폭력|가정폭력/.test(name);
 const isMulticulturalTask = name => /다문화/.test(name);
 const isCprTask = name => /심폐소생술|응급처치|CPR/i.test(name);
+const isTbTask = name => /결핵|흉부\s*X선|흉부\s*엑스선|흉부X선|X-ray/i.test(name);
+
+// 결핵검진 수검 상태 관리
+let tbState = {
+  tab: 'even', // 'even' (짝수년도), 'odd' (홀수년도), 'other' (기타 인정 대상)
+  evenDone: true,
+  evenHospital: '',
+  oddDone: true,
+  oddDate: '2026-09-15',
+  oddType: '교내 출장검진 (9/15)',
+  otherType: '식품위생법 학교급식종사자 건강진단',
+  otherDate: U.fmt(new Date()).slice(0, 10),
+};
+
+function getTbMemo() {
+  if (tbState.tab === 'even') {
+    const hosp = tbState.evenHospital ? ` (${tbState.evenHospital})` : '';
+    const status = tbState.evenDone ? '국가건강검진(흉부X선) 완료' : '국가건강검진 대상자';
+    return `[짝수년도 출생자] ${status}${hosp}`;
+  } else if (tbState.tab === 'odd') {
+    const d = tbState.oddDate || '2026-09-15';
+    const t = tbState.oddType || '교내 출장검진';
+    const status = tbState.oddDone ? '결핵검진 실시' : '결핵검진 예정';
+    return `[홀수년도 출생자] ${status} (${d}, ${t})`;
+  } else {
+    const d = tbState.otherDate || U.fmt(new Date()).slice(0, 10);
+    return `[${tbState.otherType}] 결핵검진 실시 (${d})`;
+  }
+}
 
 // 파일 크기 표시
 function formatSize(bytes) {
@@ -366,6 +417,7 @@ function renderTasks() {
     const isGenViolence = isViolenceTask(t.name) && !isSenior;
     const isMulti = isMulticulturalTask(t.name);
     const isCpr = isCprTask(t.name);
+    const isTb = isTbTask(t.name);
 
     let typeTag = '';
     let subDesc = '';
@@ -376,6 +428,10 @@ function renderTasks() {
       typeTag = '<span class="tag senior-tag">👑 고위직 대면 필수</span>';
       subDesc = '<div class="sub-desc" style="color:#7c3aed;">※ 기관장·교장·교감·행정실장 등 고위직 대상 대면교육 이수증</div>';
       extraClass = 'senior';
+    } else if (isTb) {
+      typeTag = '<span class="tag tb-tag">🫁 흉부X선 의무</span>';
+      subDesc = '<div class="sub-desc" style="color:#0f766e;">※ 전 교직원 매년 결핵 흉부X선 검진 (짝수년도: 국가건강검진 / 홀수년도: 학교 출장검진 등)</div>';
+      extraClass = 'tb-task';
     } else if (isCpr) {
       typeTag = '<span class="tag cpr-tag">❤️ 실습·이론</span>';
       subDesc = '<div class="sub-desc" style="color:#be123c;">※ 전 교직원 매년 의무 이수 (심폐소생술 및 응급처치 교육)</div>';
@@ -402,6 +458,95 @@ function renderTasks() {
     const fileObj = pickedFiles.get(t.name);
     const isPdf = fileObj && fileObj.type && fileObj.type.includes('pdf');
 
+    // 결핵검진 수검 유형 선택 UI (해당 항목이 선택되었을 때 확장)
+    const tbConfigHtml = (on && isTb) ? `
+      <div class="tb-config-box" data-task="${esc(t.name)}">
+        <div class="tb-guide-banner">
+          <b>📋 학교 결핵관리 지침 (활동성 결핵검진 - 흉부X선 검사)</b><br>
+          • <b>모든 교직원</b>: 매년 흉부X선 검사 의무 실시<br>
+          • <b>짝수년도 출생자</b>: 올해 국가건강검진 대상자에 해당 (건강검진 시행 여부 확인)<br>
+          • <b>홀수년도 출생자</b>: 올해 국가검진 비대상자는 <b>9월 15일 학교 출장 검진</b>으로 실시 예정(별도 검진 불필요)<br>
+          • 학교급식종사자 건강진단(연1회), 신규채용자(1개월 이내), 복직자(1개월 이내), 개별 X선도 인정됨
+        </div>
+
+        <div style="font-size:14px; font-weight:800; color:#0f766e; margin-bottom:8px;">
+          👇 본인에 해당하는 결핵검진 유형을 선택해 주세요:
+        </div>
+
+        <div class="tb-tabs">
+          <button type="button" class="tb-tab-btn ${tbState.tab === 'even' ? 'active' : ''}" data-tb-tab="even">
+            🔵 짝수년도 출생자<br><span style="font-size:12px; font-weight:500;">(국가건강검진 대상자)</span>
+          </button>
+          <button type="button" class="tb-tab-btn ${tbState.tab === 'odd' ? 'active' : ''}" data-tb-tab="odd">
+            🟢 홀수년도 출생자<br><span style="font-size:12px; font-weight:500;">(국가검진 비대상 / 9.15 출장)</span>
+          </button>
+          <button type="button" class="tb-tab-btn ${tbState.tab === 'other' ? 'active' : ''}" data-tb-tab="other">
+            ⚪ 기타 인정 대상<br><span style="font-size:12px; font-weight:500;">(급식종사자·채용검사 등)</span>
+          </button>
+        </div>
+
+        ${tbState.tab === 'even' ? `
+          <div class="tb-panel">
+            <div style="display:flex; align-items:center; gap:8px; font-weight:700; color:#1e293b; font-size:15px; margin-bottom:6px;">
+              <input type="checkbox" id="tbEvenCheck" ${tbState.evenDone ? 'checked' : ''} style="width:18px; height:18px; accent-color:#0d9488; cursor:pointer;">
+              <label for="tbEvenCheck" style="cursor:pointer;">올해 국가건강검진(흉부X선 포함)을 시행하였습니다.</label>
+            </div>
+            <div style="color:#64748b; font-size:13px; margin-left:26px; line-height:1.5;">
+              당해년도 국민건강보험법에 따른 일반건강검진(흉부X선 검사)을 수검한 경우 결핵검진으로 인정됩니다.
+            </div>
+            <div class="tb-field" style="margin-top:10px;">
+              <label for="tbEvenHosp">검진 기관명 또는 비고 (선택 사항)</label>
+              <input type="text" id="tbEvenHosp" placeholder="예: 한국건강관리협회, 인근 병원, 또는 수검 완료" value="${esc(tbState.evenHospital || '')}">
+            </div>
+          </div>
+        ` : ''}
+
+        ${tbState.tab === 'odd' ? `
+          <div class="tb-panel">
+            <div style="display:flex; align-items:center; gap:8px; font-weight:700; color:#1e293b; font-size:15px; margin-bottom:6px;">
+              <input type="checkbox" id="tbOddCheck" ${tbState.oddDone ? 'checked' : ''} style="width:18px; height:18px; accent-color:#0d9488; cursor:pointer;">
+              <label for="tbOddCheck" style="cursor:pointer;">결핵검진(흉부X선)을 시행하였거나 시행 예정입니다.</label>
+            </div>
+            <div style="color:#0f766e; background:#f0fdfa; border:1px solid #ccfbf1; padding:8px 12px; border-radius:8px; font-size:13px; margin:6px 0 10px; line-height:1.5;">
+              💡 올해 국가검진 비대상자는 <b>9월 15일 학교 출장 검진</b>으로 실시 예정이므로 따로 받지 않으셔도 됩니다.
+            </div>
+            
+            <div style="margin-bottom:8px; display:flex; gap:6px; flex-wrap:wrap;">
+              <button type="button" class="tb-quick-btn" data-tb-quick="school">🏫 9월 15일 교내 출장검진 (원클릭 입력)</button>
+              <button type="button" class="tb-quick-btn" data-tb-quick="direct">🏥 개별 병원/보건소 검진</button>
+            </div>
+
+            <div class="tb-field">
+              <label for="tbOddDate">검진 일자 (시행일 또는 예정일)</label>
+              <input type="date" id="tbOddDate" value="${esc(tbState.oddDate || '2026-09-15')}">
+            </div>
+            <div class="tb-field">
+              <label for="tbOddType">검진 구분 / 비고</label>
+              <input type="text" id="tbOddType" placeholder="예: 교내 출장검진, 또는 ○○병원 검진" value="${esc(tbState.oddType || '교내 출장검진 (9/15)')}">
+            </div>
+          </div>
+        ` : ''}
+
+        ${tbState.tab === 'other' ? `
+          <div class="tb-panel">
+            <div class="tb-field">
+              <label for="tbOtherSelect">인정 대상 구분 선택</label>
+              <select id="tbOtherSelect">
+                <option value="식품위생법 학교급식종사자 건강진단" ${tbState.otherType.includes('급식') ? 'selected' : ''}>식품위생법 학교급식종사자 건강진단 (연 1회 이상)</option>
+                <option value="신규채용자 채용검사(결핵포함)" ${tbState.otherType.includes('신규') ? 'selected' : ''}>신규채용자 채용검사 (채용 1개월 이내)</option>
+                <option value="복직자 검진" ${tbState.otherType.includes('복직') ? 'selected' : ''}>복직자 검진 (6개월 이상 휴직/파견 후 1개월 이내)</option>
+                <option value="개별 흉부X선 검진" ${tbState.otherType.includes('개별') ? 'selected' : ''}>개별 흉부X선 엑스레이 실시</option>
+              </select>
+            </div>
+            <div class="tb-field">
+              <label for="tbOtherDate">검진 일자</label>
+              <input type="date" id="tbOtherDate" value="${esc(tbState.otherDate || today)}">
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    ` : '';
+
     const fileBoxHtml = on ? `
       <div class="file-attach-box ${fileObj ? 'has-file' : ''}" data-task="${esc(t.name)}" style="width:100%;">
         ${fileObj ? `
@@ -415,7 +560,7 @@ function renderTasks() {
           <button type="button" class="btn-file-del" data-action="delfile" data-task="${esc(t.name)}">✕ 파일 삭제</button>
         ` : `
           <div class="file-preview-wrap">
-            <span class="file-attach-hint">📎 이수증 파일(사진·PDF) 첨부 (선택)</span>
+            <span class="file-attach-hint">📎 ${isTb ? '검진결과서·확인증' : '이수증'} 파일(사진·PDF) 첨부 (선택)</span>
           </div>
           <label class="file-attach-btn" data-action="pickfile" data-task="${esc(t.name)}">
             📁 파일 첨부
@@ -437,6 +582,7 @@ function renderTasks() {
           ${side}
         </div>
       </div>
+      ${tbConfigHtml}
       ${fileBoxHtml}
     </div>`;
   }).join('') || '<div class="msg">지금 받는 연수 이수증이 없습니다.</div>';
@@ -444,6 +590,17 @@ function renderTasks() {
   $('submitBtn').disabled = picked.size === 0;
   $('submitBtn').textContent = picked.size ? `${picked.size}개 제출 등록하기` : '연수를 선택해 주세요';
 }
+
+// 결핵검진 입력 필드 이벤트 핸들러
+$('tasks').addEventListener('input', e => {
+  if (e.target.id === 'tbEvenCheck') tbState.evenDone = e.target.checked;
+  if (e.target.id === 'tbEvenHosp') tbState.evenHospital = e.target.value.trim();
+  if (e.target.id === 'tbOddCheck') tbState.oddDone = e.target.checked;
+  if (e.target.id === 'tbOddDate') tbState.oddDate = e.target.value;
+  if (e.target.id === 'tbOddType') tbState.oddType = e.target.value.trim();
+  if (e.target.id === 'tbOtherSelect') tbState.otherType = e.target.value;
+  if (e.target.id === 'tbOtherDate') tbState.otherDate = e.target.value;
+});
 
 // 파일 선택 변경 이벤트
 $('tasks').addEventListener('change', async e => {
@@ -461,6 +618,37 @@ $('tasks').addEventListener('change', async e => {
 });
 
 $('tasks').addEventListener('click', e => {
+  // 결핵검진 탭 및 빠른 입력 버튼 클릭 처리
+  if (e.target.closest('.tb-config-box')) {
+    const tabBtn = e.target.closest('[data-tb-tab]');
+    if (tabBtn) {
+      e.stopPropagation();
+      tbState.tab = tabBtn.dataset.tbTab;
+      renderTasks();
+      return;
+    }
+    const quickBtn = e.target.closest('[data-tb-quick]');
+    if (quickBtn) {
+      e.stopPropagation();
+      if (quickBtn.dataset.tbQuick === 'school') {
+        tbState.oddDate = '2026-09-15';
+        tbState.oddType = '교내 출장검진 (9/15)';
+      } else {
+        tbState.oddDate = U.fmt(new Date()).slice(0, 10);
+        tbState.oddType = '개별 병원 흉부X선';
+      }
+      renderTasks();
+      return;
+    }
+    // 인풋/라벨 클릭 시 카드 토글 방지
+    if (e.target.closest('input') || e.target.closest('label') || e.target.closest('select')) {
+      e.stopPropagation();
+      return;
+    }
+    e.stopPropagation();
+    return;
+  }
+
   // 파일 첨부 또는 삭제 클릭 시 태스크 선택 토글 방지
   const delBtn = e.target.closest('[data-action="delfile"]');
   if (delBtn) {
@@ -523,11 +711,15 @@ $('submitBtn').addEventListener('click', async () => {
   const hasSeniorPicked = pickedList.some(t => isSeniorTask(t));
   const hasMultiPicked = pickedList.some(t => isMulticulturalTask(t));
   const hasCprPicked = pickedList.some(t => isCprTask(t));
+  const hasTbPicked = pickedList.some(t => isTbTask(t));
   const attachedCount = pickedList.filter(t => pickedFiles.has(t)).length;
 
-  let confirmMsg = `${me.name} 님, 선택한 ${picked.size}개 연수의 이수증을 제출 등록할까요?`;
+  let confirmMsg = `${me.name} 님, 선택한 ${picked.size}개 항목의 제출 여부를 등록할까요?`;
   if (attachedCount > 0) {
     confirmMsg += `\n(첨부 파일 ${attachedCount}개 포함)`;
+  }
+  if (hasTbPicked) {
+    confirmMsg += `\n\n[안내] 🫁 활동성 결핵검진 수검 정보:\n→ ${getTbMemo()}`;
   }
   if (hasSeniorPicked) {
     confirmMsg += `\n\n[안내] 👑 '고위직 대면교육' 이수 항목이 포함되어 있습니다.\n(기관장·교장·교감·행정실장 등 고위직 대상 대면교육으로 등록됩니다)`;
@@ -545,20 +737,28 @@ $('submitBtn').addEventListener('click', async () => {
   $('submitBtn').textContent = '등록하는 중…';
 
   const filesMap = {};
+  const memosMap = {};
   pickedList.forEach(t => {
     if (pickedFiles.has(t)) filesMap[t] = pickedFiles.get(t);
+    if (isTbTask(t)) memosMap[t] = getTbMemo();
   });
 
   try {
-    const res = await Api.call('submit', { no: me.no, name: me.name, tasks: pickedList, files: filesMap });
+    const res = await Api.call('submit', { no: me.no, name: me.name, tasks: pickedList, files: filesMap, memos: memosMap });
     res.added.forEach(task => {
       const f = filesMap[task];
-      data.records.push({ no: me.no, name: me.name, task, memo: f ? '이수증: ' + f.name : '', file: f });
+      const memoText = memosMap[task] || '';
+      const fullMemo = f ? (memoText ? `${memoText} / 이수증: ${f.name}` : `이수증: ${f.name}`) : memoText;
+      data.records.push({ no: me.no, name: me.name, task, memo: fullMemo, file: f });
     });
     $('doneTitle').textContent = `${me.name} 님, 제출 여부가 등록되었습니다!`;
     $('doneList').innerHTML = res.added.map(t => {
       const f = filesMap[t];
-      return `<li>✅ ${esc(t)}${f ? ` <small style="display:block; font-size:16px; color:#2563eb; margin-top:4px;">📎 이수증 파일 첨부됨: ${esc(f.name)}</small>` : ''}</li>`;
+      const memoText = memosMap[t];
+      return `<li>✅ ${esc(t)}
+        ${memoText ? `<small style="display:block; font-size:16px; color:#0d9488; font-weight:700; margin-top:4px;">🫁 수검 정보: ${esc(memoText)}</small>` : ''}
+        ${f ? `<small style="display:block; font-size:16px; color:#2563eb; margin-top:4px;">📎 첨부 파일: ${esc(f.name)}</small>` : ''}
+      </li>`;
     }).join('');
     $('doneNote').textContent = res.dups.length ? `이미 제출되어 있던 항목: ${res.dups.join(', ')}` : '';
     show('done');

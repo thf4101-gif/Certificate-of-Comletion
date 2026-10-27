@@ -170,15 +170,16 @@ function doPost(e) {
         if (!Array.isArray(q.tasks) || !q.tasks.length || q.tasks.length > 100) throw new Error('연수를 선택하세요.');
         const tasks = [...new Set(q.tasks.map(t => text_(t, '연수명', 120)))];
         if (tasks.some(t => !d.tasks.some(x => x.name === t))) throw new Error('현재 등록되지 않은 연수가 있습니다. 화면을 새로고침하세요.');
-        const added = [], dups = [], time = stamp_();
         const filesMap = (q.files && typeof q.files === 'object') ? q.files : {};
+        const memosMap = (q.memos && typeof q.memos === 'object') ? q.memos : {};
         tasks.forEach(task => {
           if (d.records.some(r => r.no === s.no && r.name === s.name && r.task === task)) dups.push(task);
           else {
-            let memo = '';
+            let memo = memosMap[task] ? String(memosMap[task]).slice(0, 300) : '';
             if (filesMap[task]) {
               const fileUrl = saveFileToDrive_(filesMap[task], s, task);
-              memo = fileUrl ? '이수증: ' + fileUrl : (filesMap[task].name ? '첨부: ' + filesMap[task].name : '이수증 첨부');
+              const fileText = fileUrl ? '이수증: ' + fileUrl : (filesMap[task].name ? '첨부: ' + filesMap[task].name : '이수증 첨부');
+              memo = memo ? (memo + ' / ' + fileText) : fileText;
             }
             sh.appendRow([time, cell_(s.no), cell_(s.name), cell_(task), cell_(memo)]);
             added.push(task);

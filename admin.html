@@ -207,6 +207,7 @@
           <button type="button" class="btn" id="tplSeniorViolence" style="border-color:#d8b4fe; color:#6b21a8; font-weight:600;">👑 4대 폭력 예방교육 (고위직 대면)</button>
           <button type="button" class="btn" id="tplMulticultural" style="border-color:#bae6fd; color:#0369a1; font-weight:600;">👨‍🏫 다문화 교육 (교사 전용)</button>
           <button type="button" class="btn" id="tplCpr" style="border-color:#fecdd3; color:#be123c; font-weight:600;">❤️ 심폐소생술 및 응급처치 교육</button>
+          <button type="button" class="btn" id="tplTb" style="border-color:#5eead4; color:#0f766e; font-weight:600;">🫁 활동성 결핵검진 (흉부X선)</button>
         </div>
         <p class="hint" style="margin-top:8px;">추가하면 교직원 화면의 제출 목록에 바로 나타납니다. 마감일은 선택 사항입니다.</p>
       </div>
@@ -387,7 +388,14 @@ function openCertModal(s, task, r) {
   let metaHtml = `<div><b>교직원:</b> ${esc(s.no)}번 ${esc(s.name)}</div>`;
   metaHtml += `<div><b>연수 항목:</b> ${esc(task)}</div>`;
   metaHtml += `<div><b>제출 일시:</b> ${esc(r.time || '기록 없음')}</div>`;
-  if (r.memo) metaHtml += `<div><b>비고 / 메모:</b> ${esc(r.memo)}</div>`;
+  if (r.memo) {
+    const isTb = /결핵|흉부\s*X선|흉부\s*엑스선|X-ray/i.test(task) || /짝수년도|홀수년도|출장검진|결핵검진/i.test(r.memo);
+    if (isTb) {
+      metaHtml += `<div style="background:#ccfbf1; color:#0f766e; border:1px solid #99f6e4; padding:8px 12px; border-radius:8px; margin-top:6px; font-weight:700;">🫁 <b>결핵검진 수검 정보:</b> ${esc(r.memo)}</div>`;
+    } else {
+      metaHtml += `<div><b>비고 / 메모:</b> ${esc(r.memo)}</div>`;
+    }
+  }
   $('certMeta').innerHTML = metaHtml;
 
   let openUrl = '';
@@ -447,11 +455,15 @@ function renderStatus() {
     const isSenior = /고위직|대면/.test(t.name);
     const isMulti = /다문화/.test(t.name);
     const isCpr = /심폐소생술|응급처치|CPR/i.test(t.name);
+    const isTb = /결핵|흉부\s*X선|흉부\s*엑스선|X-ray/i.test(t.name);
     let cardStyle = '';
     let roleBadge = '';
     if (isSenior) {
       cardStyle = 'border-color:#d8b4fe; background:#faf5ff;';
       roleBadge = '<div style="color:#7c3aed; font-size:12px; font-weight:700; margin-top:1px;">고위직(교장·교감·행정실장) 대면 필수</div>';
+    } else if (isTb) {
+      cardStyle = 'border-color:#5eead4; background:#f0fdfa;';
+      roleBadge = '<div style="color:#0f766e; font-size:12px; font-weight:700; margin-top:1px;">🫁 매년 흉부X선 의무 (짝수:국가검진 / 홀수:9.15출장)</div>';
     } else if (isCpr) {
       cardStyle = 'border-color:#fecdd3; background:#fff1f2;';
       roleBadge = '<div style="color:#be123c; font-size:12px; font-weight:700; margin-top:1px;">❤️ 전 교직원 매년 의무 이수</div>';
@@ -463,7 +475,7 @@ function renderStatus() {
     return `<div class="card ${t.name === sel ? 'sel' : ''} ${total && n === total ? 'full' : ''}" data-i="${i}" style="${cardStyle}">
       ${donut(pct)}
       <div style="min-width:0">
-        <div class="t" title="${esc(t.name)}">${isSenior ? '👑 ' : isCpr ? '❤️ ' : isMulti ? '👨‍🏫 ' : ''}${esc(t.name)}</div>
+        <div class="t" title="${esc(t.name)}">${isSenior ? '👑 ' : isTb ? '🫁 ' : isCpr ? '❤️ ' : isMulti ? '👨‍🏫 ' : ''}${esc(t.name)}</div>
         ${roleBadge}
         <div class="m"><b>${n}</b> / ${total}명 제출</div>
         <div class="m ${late ? 'late' : ''}">${t.due ? '마감 ' + esc(U.due(t.due)) + (late ? ' (지남)' : '') : '마감일 없음'}</div>
@@ -487,9 +499,11 @@ function renderStatus() {
       const isSenior = /고위직|대면/.test(t.name);
       const isMulti = /다문화/.test(t.name);
       const isCpr = /심폐소생술|응급처치|CPR/i.test(t.name);
+      const isTb = /결핵|흉부\s*X선|흉부\s*엑스선|X-ray/i.test(t.name);
       let thStyle = '';
       let prefix = '';
       if (isSenior) { thStyle = 'color:#6b21a8; background:#f5f0ff;'; prefix = '👑 '; }
+      else if (isTb) { thStyle = 'color:#0f766e; background:#f0fdfa;'; prefix = '🫁 '; }
       else if (isCpr) { thStyle = 'color:#be123c; background:#fff1f2;'; prefix = '❤️ '; }
       else if (isMulti) { thStyle = 'color:#0369a1; background:#f0f9ff;'; prefix = '👨‍🏫 '; }
       return `<th class="${t.name === sel ? 'selcol' : ''}" style="${thStyle}">${prefix}${esc(t.name)}</th>`;
@@ -577,8 +591,12 @@ function renderTasks() {
     const n = D.students.filter(s => map.has(K(s.no, s.name, t.name))).length;
     const isSenior = /고위직|대면/.test(t.name);
     const isMulti = /다문화/.test(t.name);
+    const isCpr = /심폐소생술|응급처치|CPR/i.test(t.name);
+    const isTb = /결핵|흉부\s*X선|흉부\s*엑스선|X-ray/i.test(t.name);
     let tag = '';
     if (isSenior) tag = '<span style="color:#7c3aed; font-weight:700;">[👑 고위직 대면] </span>';
+    else if (isTb) tag = '<span style="color:#0f766e; font-weight:700;">[🫁 결핵검진] </span>';
+    else if (isCpr) tag = '<span style="color:#be123c; font-weight:700;">[❤️ 심폐소생술] </span>';
     else if (isMulti) tag = '<span style="color:#0369a1; font-weight:700;">[👨‍🏫 교사 전용] </span>';
 
     return `<li><span class="nm">${tag}${esc(t.name)}</span>
@@ -617,6 +635,10 @@ $('tplMulticultural').addEventListener('click', () => {
 $('tplCpr').addEventListener('click', () => {
   $('newTask').value = '심폐소생술 및 응급처치 교육';
   addTask('심폐소생술 및 응급처치 교육');
+});
+$('tplTb').addEventListener('click', () => {
+  $('newTask').value = '활동성 결핵검진 (흉부X선 검사)';
+  addTask('활동성 결핵검진 (흉부X선 검사)');
 });
 
 $('taskList').addEventListener('click', async e => {

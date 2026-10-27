@@ -6,7 +6,7 @@
 (function () {
   const CFG = window.APP_CONFIG || {};
   const URL_KEY = 'trainingCertificateTracker.apiUrl';
-  const DEMO_KEY = 'trainingCertificateTracker.demo.v4';
+  const DEMO_KEY = 'trainingCertificateTracker.demo.v5';
 
   const store = {
     get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
@@ -60,6 +60,7 @@
       tasks: [
         { name: '개인정보 보호 연수', due: day(-1) },
         { name: '심폐소생술 및 응급처치 교육', due: day(2) },
+        { name: '활동성 결핵검진 (흉부X선 검사)', due: day(14) },
         { name: '4대 폭력 예방교육 (일반)', due: day(3) },
         { name: '4대 폭력 예방교육 (고위직 대면)', due: day(3) },
         { name: '다문화 교육 (교사 전용)', due: day(4) },
@@ -77,14 +78,17 @@
 
   const demo = {
     getStudentData() { const d = dload(); return { students: d.students, tasks: d.tasks, records: d.records }; },
-    submit({ no, name, tasks, files }) {
+    submit({ no, name, tasks, files, memos }) {
       const d = dload(), time = fmt(new Date()), added = [], dups = [];
       tasks.forEach(t => {
         if (has(d, no, name, t)) dups.push(t);
         else {
           added.push(t);
           const f = files && files[t] ? files[t] : null;
-          const memoText = f ? (f.name ? '파일첨부: ' + f.name : '이수증 첨부') : '';
+          let memoText = memos && memos[t] ? memos[t] : '';
+          if (f && f.name) {
+            memoText = memoText ? `${memoText} / 파일: ${f.name}` : `파일첨부: ${f.name}`;
+          }
           d.records.push({ time, no, name, task: t, memo: memoText, file: f });
         }
       });
