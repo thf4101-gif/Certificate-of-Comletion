@@ -473,20 +473,80 @@ function doPost(e) {
       const time = stamp_();
 
       tasks.forEach(task => {
-        if (d.records.some(r => r.no === s.no && (r.name === s.name || r.name.indexOf(s.name) >= 0) && r.task === task)) {
-          dups.push(task);
-        } else {
-          let certNo = certNosMap[task] ? String(certNosMap[task]).trim() : '';
-          let certType = certTypesMap[task] ? String(certTypesMap[task]).trim() : '원격 연수';
-          let memo = memosMap[task] ? String(memosMap[task]).slice(0, 300) : '';
-          let fileUrl = '';
+        let certNo = certNosMap[task] ? String(certNosMap[task]).trim() : '';
+        let certType = certTypesMap[task] ? String(certTypesMap[task]).trim() : '원격 연수';
+        let memo = memosMap[task] ? String(memosMap[task]).slice(0, 300) : '';
+        let fileUrl = '';
 
-          if (filesMap[task]) {
-            fileUrl = saveFileToDrive_(filesMap[task], s, task);
-            const fileText = fileUrl ? '이수증: ' + fileUrl : (filesMap[task].name ? '첨부: ' + filesMap[task].name : '이수증 첨부');
-            memo = memo ? (memo + ' / ' + fileText) : fileText;
+        if (filesMap[task]) {
+          fileUrl = saveFileToDrive_(filesMap[task], s, task);
+          const fileText = fileUrl ? '이수증: ' + fileUrl : (filesMap[task].name ? '첨부: ' + filesMap[task].name : '이수증 첨부');
+          memo = memo ? (memo + ' / ' + fileText) : fileText;
+        }
+
+        const existingRecord = d.records.find(r => r.no === s.no && (r.name === s.name || r.name.indexOf(s.name) >= 0) && r.task === task);
+
+        if (existingRecord) {
+          // 이미 제출된 연수인 경우: 새로 첨부된 이수증 파일이나 이수번호가 있으면 기존 행 갱신!
+          const hasNewData = !!(filesMap[task] || certNo || memo || (certType && certType !== existingRecord.certType));
+          if (!hasNewData) {
+            dups.push(task);
+            return;
           }
 
+          if (!certNo && existingRecord.certNo && existingRecord.certNo !== '이수 완료') certNo = existingRecord.certNo;
+          if (!certType && existingRecord.certType) certType = existingRecord.certType;
+          if (!fileUrl && existingRecord.fileUrl) fileUrl = existingRecord.fileUrl;
+
+          const fullMemoParts = [];
+          if (certNo) fullMemoParts.push('이수번호: ' + certNo);
+          if (certType) fullMemoParts.push('연수형태: ' + certType);
+          if (memo) fullMemoParts.push(memo);
+          else if (existingRecord.memo) fullMemoParts.push(existingRecord.memo);
+          const fullMemo = fullMemoParts.join(' / ');
+
+          // 1. 제출기록 시트에서 기존 행 찾아서 업데이트
+          const lastRow = sh.getLastRow();
+          let updatedRow = false;
+          if (lastRow > 1) {
+            const recRows = sh.getRange(2, 1, lastRow - 1, 4).getDisplayValues();
+            for (let i = 0; i < recRows.length; i++) {
+              if (String(recRows[i][1]).trim() === String(s.no).trim() &&
+                  (recRows[i][2] === s.name || recRows[i][2].indexOf(s.name) >= 0) &&
+                  recRows[i][3] === task) {
+                sh.getRange(i + 2, 1, 1, 8).setValues([[
+                  time,
+                  cell_(s.no),
+                  cell_(s.name),
+                  cell_(task),
+                  cell_(fullMemo),
+                  cell_(certNo),
+                  cell_(certType),
+                  cell_(fileUrl)
+                ]]);
+                updatedRow = true;
+                break;
+              }
+            }
+          }
+          if (!updatedRow) {
+            sh.appendRow([
+              time,
+              cell_(s.no),
+              cell_(s.name),
+              cell_(task),
+              cell_(fullMemo),
+              cell_(certNo),
+              cell_(certType),
+              cell_(fileUrl)
+            ]);
+          }
+
+          // 2. 해당 연수 전용 시트(성인지교육, 4대폭력예방교육 등)의 이수번호, 연수형태, 이수증 링크 갱신
+          updateTaskSheetRecord_(ss, task, s, certNo, certType, time, fileUrl, d.students);
+          added.push(task);
+        } else {
+          // 신규 제출
           const fullMemoParts = [];
           if (certNo) fullMemoParts.push('이수번호: ' + certNo);
           if (certType) fullMemoParts.push('연수형태: ' + certType);

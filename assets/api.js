@@ -90,13 +90,43 @@
     submit({ no, name, tasks, files, memos, certNos, certTypes }) {
       const d = dload(), time = fmt(new Date()), added = [], dups = [];
       tasks.forEach(t => {
-        if (has(d, no, name, t)) dups.push(t);
-        else {
+        const f = files && files[t] ? files[t] : null;
+        let memoText = memos && memos[t] ? memos[t] : '';
+        const certNo = (certNos && certNos[t]) ? String(certNos[t]).trim() : '';
+        const certType = (certTypes && certTypes[t]) ? String(certTypes[t]).trim() : '원격 연수';
+
+        const existingIdx = d.records.findIndex(r => r.no === no && r.name === name && r.task === t);
+        if (existingIdx >= 0) {
+          const old = d.records[existingIdx];
+          const hasNewData = !!(f || certNo || memoText || (certType && certType !== old.certType));
+          if (!hasNewData) {
+            dups.push(t);
+            return;
+          }
+          const finalFile = f || old.file;
+          const finalCertNo = certNo || (old.certNo && old.certNo !== '이수 완료' ? old.certNo : '');
+          const finalCertType = certType || old.certType || '원격 연수';
+          const parts = [];
+          if (finalCertNo) parts.push(`이수번호: ${finalCertNo}`);
+          if (finalCertType) parts.push(`연수형태: ${finalCertType}`);
+          if (memoText) parts.push(memoText);
+          else if (old.memo) parts.push(old.memo);
+          if (finalFile && finalFile.name) parts.push(`파일: ${finalFile.name}`);
+          const fullMemo = parts.join(' / ');
+
+          d.records[existingIdx] = {
+            time,
+            no,
+            name,
+            task: t,
+            memo: fullMemo,
+            file: finalFile,
+            certNo: finalCertNo,
+            certType: finalCertType
+          };
           added.push(t);
-          const f = files && files[t] ? files[t] : null;
-          let memoText = memos && memos[t] ? memos[t] : '';
-          const certNo = (certNos && certNos[t]) ? String(certNos[t]).trim() : '';
-          const certType = (certTypes && certTypes[t]) ? String(certTypes[t]).trim() : '원격 연수';
+        } else {
+          added.push(t);
           const parts = [];
           if (certNo) parts.push(`이수번호: ${certNo}`);
           if (certType) parts.push(`연수형태: ${certType}`);

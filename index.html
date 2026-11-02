@@ -56,8 +56,18 @@
   .task .due.late { color: #c0392b; font-weight: 700; }
   .task.on { border-color: var(--brand); background: var(--brand-soft); }
   .task.on .box { background: var(--brand); border-color: var(--brand); }
-  .task.done { cursor: default; background: #f1f3f7; color: #8a94a6; }
+  .task.done { cursor: pointer; background: #fbfcfe; border-color: #cbd5e1; color: var(--ink); }
+  .task.done:hover { border-color: #94a3b8; }
   .task.done .box { background: var(--ok); border-color: var(--ok); }
+  .task.done.editing-done { border-color: var(--brand); background: #f0f7ff; box-shadow: 0 4px 14px rgba(47,111,237,.12); }
+  .btn-cert-edit-open {
+    font-size: 13.5px; font-weight: 700; color: #1d4ed8; background: #eff6ff;
+    border: 1.5px solid #93c5fd; border-radius: 10px; padding: 6px 14px;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    transition: all .15s;
+  }
+  .btn-cert-edit-open:hover { background: #dbeafe; border-color: #3b82f6; }
+  .btn-cert-edit-open:active { transform: scale(.97); }
   .task .tag { font-size: 15px; font-weight: 700; color: var(--ok); background: var(--ok-soft); border-radius: 999px; padding: 4px 12px; white-space: nowrap; }
 
   /* 고위직 4대 폭력 예방교육 안내 및 전용 스타일 */
@@ -285,6 +295,7 @@ let data = null, me = null, picked = new Set(), pickedFiles = new Map(), busy = 
 let pickedCertNos = new Map();   // 연수명별 이수번호
 let pickedCertTypes = new Map(); // 연수명별 연수형태
 let ocrScanningMap = new Map();  // 연수명별 스캔 상태
+let editingDoneTasks = new Set(); // 이미 제출 완료된 연수 중 이수증 사후 등록/수정 중인 연수 목록
 
 $('title').textContent = CFG.title || '교직원 연수 이수증 수합';
 $('className').textContent = CFG.className || '';
@@ -437,7 +448,8 @@ function getStaffType(name) {
 function renderTasks() {
   $('whoNo').textContent = me.no;
   $('whoName').textContent = me.name;
-  const done = new Set(data.records.filter(r => r.no === me.no && r.name === me.name).map(r => r.task));
+  const doneMap = new Map();
+  data.records.filter(r => r.no === me.no && (r.name === me.name || r.name.indexOf(me.name) >= 0)).forEach(r => doneMap.set(r.task, r));
   const today = U.fmt(new Date()).slice(0, 10);
   const staffType = getStaffType(me.name);
   const isNonTeacher = staffType === 'staff';
@@ -447,7 +459,10 @@ function renderTasks() {
   $('seniorNotice').hidden = !hasViolenceOrSenior;
 
   $('tasks').innerHTML = data.tasks.map((t, i) => {
-    const isDone = done.has(t.name), on = picked.has(t.name);
+    const existingRec = doneMap.get(t.name);
+    const isDone = !!existingRec;
+    const isEditingDone = editingDoneTasks.has(t.name);
+    const on = picked.has(t.name) || isEditingDone;
     const late = /^\d{4}-\d{2}-\d{2}$/.test(t.due) && t.due < today;
     const isSenior = isSeniorTask(t.name);
     const isGenViolence = isViolenceTask(t.name) && !isSenior;
@@ -458,7 +473,7 @@ function renderTasks() {
     let typeTag = '';
     let subDesc = '';
     let extraClass = '';
-    let isDisabled = isDone;
+    let isDisabled = false;
 
     if (isSenior) {
       typeTag = '<span class="tag senior-tag">👑 고위직 대면 필수</span>';
@@ -488,8 +503,55 @@ function renderTasks() {
       }
     }
 
-    const side = isDone ? '<span class="tag">제출 등록 완료</span>'
-      : t.due ? `<span class="due ${late ? 'late' : ''}">마감 ${esc(U.due(t.due))}${late ? ' 지남' : ''}</span>` : '';
+    const hasCert = existingRec && ((existingRec.certNo && existingRec.certNo !== '이수 완료' && existingRec.certNo !== '담당자 직접 확인') || existingRec.file || (existingRec.memo && (existingRec.memo.includes('이수증:') || existingRec.memo.includes('파일:'))));
+
+    let side = '';
+    if (isDone) {
+      if (isEditingDone) {
+        side = `<span class="tag" style="background:#dbeafe; color:#1d4ed8; border:1.5px solid #93c5fd;">📷 이수증 갱신 중</span>`;
+      } else {
+        side = `<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
+          <span class="tag" style="background:#e3f6ea; color:#15803d; border:1px solid #bbf7d0;">제출 완료</span>
+          <button type="button" class="btn-cert-edit-open" data-action="edit-done" data-task="${esc(t.name)}">
+            📷 이수증 ${hasCert ? '수정/재스캔' : '스캔하여 첨부'}
+          </button>
+        </div>`;
+      }
+    } else {
+      side = t.due ? `<span class="due ${late ? 'late' : ''}">마감 ${esc(U.due(t.due))}${late ? ' 지남' : ''}</span>` : '';
+    }
+
+    let doneSummaryHtml = '';
+    if (isDone && !isEditingDone) {
+      const cNo = existingRec.certNo && existingRec.certNo !== '이수 완료' && existingRec.certNo !== '담당자 직접 확인' ? existingRec.certNo : '';
+      const cType = existingRec.certType || '';
+      const hasFile = existingRec.file || (existingRec.memo && (existingRec.memo.includes('이수증:') || existingRec.memo.includes('파일:')));
+      doneSummaryHtml = `
+        <div style="margin-top:10px; padding:10px 14px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; font-size:13.5px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            ${cNo ? `<span style="color:#1d4ed8; font-weight:700;">📜 등록된 이수번호: ${esc(cNo)}</span>` : `<span style="background:#fef3c7; color:#92400e; font-size:12.5px; font-weight:700; padding:2px 8px; border-radius:6px;">⚠️ 이수번호 미등록 (이수증 미첨부)</span>`}
+            ${cType ? `<span style="color:#64748b; font-size:13px;">· ${esc(cType)}</span>` : ''}
+            ${hasFile ? `<span style="color:#059669; font-weight:600; font-size:13px;">· 📎 이수증 첨부됨</span>` : ''}
+          </div>
+          <button type="button" class="btn-cert-edit-open" data-action="edit-done" data-task="${esc(t.name)}" style="font-size:12.5px; padding:4px 10px;">
+            ${cNo || hasFile ? '✏️ 이수증 변경 / 재스캔' : '➕ 이수증 스캔 및 등록'}
+          </button>
+        </div>
+      `;
+    }
+
+    let editBannerHtml = '';
+    if (isDone && isEditingDone) {
+      editBannerHtml = `
+        <div style="margin-top:10px; margin-bottom:8px; padding:10px 14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+          <div>
+            <span style="font-weight:800; color:#1d4ed8; font-size:14px;">📷 이수증 사후 등록 및 이수번호 스캔/수정</span>
+            <div style="font-size:12px; color:#2563eb; margin-top:2px;">이수증을 카메라로 스캔하거나 파일을 선택하면 <b>이수번호가 자동 입력</b>되어 스프레드시트에 즉시 갱신 반영됩니다.</div>
+          </div>
+          <button type="button" class="btn-ghost btn-sm" data-action="cancel-edit" data-task="${esc(t.name)}" style="font-size:12px; padding:4px 10px; border-color:#93c5fd; color:#1e40af; background:#fff;">접기 ✕</button>
+        </div>
+      `;
+    }
 
     const fileObj = pickedFiles.get(t.name);
     const isPdf = fileObj && fileObj.type && fileObj.type.includes('pdf');
@@ -606,8 +668,8 @@ function renderTasks() {
       </div>
     ` : '';
 
-    const curCertNo = pickedCertNos.get(t.name) || '';
-    const curCertType = pickedCertTypes.get(t.name) || (isSenior ? '대면교육' : '원격 연수');
+    const curCertNo = pickedCertNos.get(t.name) || (existingRec && existingRec.certNo && existingRec.certNo !== '이수 완료' && existingRec.certNo !== '담당자 직접 확인' ? existingRec.certNo : '');
+    const curCertType = pickedCertTypes.get(t.name) || (existingRec && existingRec.certType ? existingRec.certType : (isSenior ? '대면교육' : '원격 연수'));
     const scanInfo = ocrScanningMap.get(t.name);
 
     const fileBoxHtml = on ? (isTb ? `
@@ -634,6 +696,13 @@ function renderTasks() {
             </div>
           `}
         </div>
+        ${isEditingDone ? `
+          <div style="margin-top:12px; display:flex; justify-content:flex-end;">
+            <button type="button" class="btn primary" data-action="save-single" data-task="${esc(t.name)}" style="padding:10px 18px; font-size:14px; font-weight:700;">
+              💾 [${esc(t.name)}] 수검정보 및 서류 갱신 저장하기
+            </button>
+          </div>
+        ` : ''}
       </div>
     ` : `
       <div class="file-attach-box ${fileObj ? 'has-file' : ''}" data-task="${esc(t.name)}" style="width:100%;">
@@ -702,11 +771,19 @@ function renderTasks() {
               <option value="학교 자체 대면연수" ${curCertType === '학교 자체 대면연수' ? 'selected' : ''}>학교 자체 대면연수</option>
             </select>
           </div>
+
+          ${isEditingDone ? `
+            <div style="margin-top:12px; display:flex; justify-content:flex-end;">
+              <button type="button" class="btn primary" data-action="save-single" data-task="${esc(t.name)}" style="padding:10px 18px; font-size:14px; font-weight:700;">
+                💾 [${esc(t.name)}] 이수증 및 이수번호 갱신 저장하기
+              </button>
+            </div>
+          ` : ''}
         </div>
       </div>
     `) : '';
 
-    return `<div role="button" tabindex="0" class="task ${extraClass} ${isDone ? 'done' : on ? 'on' : ''}" data-i="${i}" ${isDisabled ? 'style="pointer-events:none; opacity:.7;"' : ''} style="flex-direction:column; align-items:stretch;">
+    return `<div role="button" tabindex="0" class="task ${extraClass} ${isDone ? 'done' : ''} ${isEditingDone ? 'editing-done' : ''} ${on ? 'on' : ''}" data-i="${i}" ${isDisabled ? 'style="pointer-events:none; opacity:.7;"' : ''} style="flex-direction:column; align-items:stretch;">
       <div style="display:flex; align-items:center; gap:16px; width:100%;">
         <span class="box">${isDone || on ? '✓' : ''}</span>
         <div class="name-wrap">
@@ -718,13 +795,19 @@ function renderTasks() {
           ${side}
         </div>
       </div>
+      ${doneSummaryHtml}
+      ${editBannerHtml}
       ${tbConfigHtml}
       ${fileBoxHtml}
     </div>`;
   }).join('') || '<div class="msg">지금 받는 연수 이수증이 없습니다.</div>';
 
-  $('submitBtn').disabled = picked.size === 0;
-  $('submitBtn').textContent = picked.size ? `${picked.size}개 제출 등록하기` : '연수를 선택해 주세요';
+  const totalCount = picked.size;
+  const hasEditingDone = [...picked].some(t => doneMap.has(t));
+  $('submitBtn').disabled = totalCount === 0;
+  $('submitBtn').textContent = totalCount
+    ? (hasEditingDone ? `${totalCount}개 연수 제출 및 이수증 갱신하기` : `${totalCount}개 제출 등록하기`)
+    : '연수를 선택해 주세요';
 }
 
 // 결핵검진 및 이수번호 입력 필드 이벤트 핸들러
@@ -856,6 +939,45 @@ $('tasks').addEventListener('click', e => {
     return;
   }
 
+  // 이수증 사후 수정/첨부 열기 버튼 클릭 시
+  const editDoneBtn = e.target.closest('[data-action="edit-done"]');
+  if (editDoneBtn) {
+    e.stopPropagation();
+    const taskName = editDoneBtn.dataset.task;
+    editingDoneTasks.add(taskName);
+    picked.add(taskName);
+    const existingRec = data.records.find(r => r.no === me.no && (r.name === me.name || r.name.indexOf(me.name) >= 0) && r.task === taskName);
+    if (existingRec && existingRec.certNo && existingRec.certNo !== '이수 완료' && !pickedCertNos.has(taskName)) {
+      pickedCertNos.set(taskName, existingRec.certNo);
+    }
+    if (existingRec && existingRec.certType && !pickedCertTypes.has(taskName)) {
+      pickedCertTypes.set(taskName, existingRec.certType);
+    }
+    renderTasks();
+    return;
+  }
+
+  // 이수증 사후 수정 접기 버튼 클릭 시
+  const cancelEditBtn = e.target.closest('[data-action="cancel-edit"]');
+  if (cancelEditBtn) {
+    e.stopPropagation();
+    const taskName = cancelEditBtn.dataset.task;
+    editingDoneTasks.delete(taskName);
+    picked.delete(taskName);
+    renderTasks();
+    return;
+  }
+
+  // 카드 내 단일 갱신 저장 버튼 클릭 시
+  const saveSingleBtn = e.target.closest('[data-action="save-single"]');
+  if (saveSingleBtn) {
+    e.stopPropagation();
+    const taskName = saveSingleBtn.dataset.task;
+    picked.add(taskName);
+    doSubmitCertificates([taskName]);
+    return;
+  }
+
   // 이수번호 입력 박스, 인풋, 셀렉트 클릭 시 카드 토글 방지
   if (e.target.closest('.cert-fields-box') || e.target.closest('.file-attach-box') ||
       e.target.closest('input') || e.target.closest('select') || e.target.closest('label') ||
@@ -866,6 +988,28 @@ $('tasks').addEventListener('click', e => {
   const b = e.target.closest('.task');
   if (!b || b.dataset.i == null) return;
   const name = data.tasks[+b.dataset.i].name;
+
+  // 이미 제출된 연수를 클릭했을 때: 사후 수정/첨부 모드로 토글
+  const isDoneTask = data.records.some(r => r.no === me.no && (r.name === me.name || r.name.indexOf(me.name) >= 0) && r.task === name);
+  if (isDoneTask) {
+    if (editingDoneTasks.has(name)) {
+      editingDoneTasks.delete(name);
+      picked.delete(name);
+    } else {
+      editingDoneTasks.add(name);
+      picked.add(name);
+      const existingRec = data.records.find(r => r.no === me.no && (r.name === me.name || r.name.indexOf(me.name) >= 0) && r.task === name);
+      if (existingRec && existingRec.certNo && existingRec.certNo !== '이수 완료' && !pickedCertNos.has(name)) {
+        pickedCertNos.set(name, existingRec.certNo);
+      }
+      if (existingRec && existingRec.certType && !pickedCertTypes.has(name)) {
+        pickedCertTypes.set(name, existingRec.certType);
+      }
+    }
+    renderTasks();
+    armIdle();
+    return;
+  }
 
   // 다문화 교육은 교사만 선택 가능
   if (isMulticulturalTask(name)) {
@@ -907,16 +1051,22 @@ $('tasks').addEventListener('click', e => {
 
 $('backBtn').addEventListener('click', reset);
 
-$('submitBtn').addEventListener('click', async () => {
-  if (busy || !picked.size) return;
-  const pickedList = [...picked];
+async function doSubmitCertificates(targetTaskList = null) {
+  if (busy) return;
+  const pickedList = targetTaskList ? targetTaskList : [...picked];
+  if (!pickedList.length) return;
+
   const hasSeniorPicked = pickedList.some(t => isSeniorTask(t));
   const hasMultiPicked = pickedList.some(t => isMulticulturalTask(t));
   const hasCprPicked = pickedList.some(t => isCprTask(t));
   const hasTbPicked = pickedList.some(t => isTbTask(t));
   const attachedCount = pickedList.filter(t => pickedFiles.has(t)).length;
+  const isUpdatingExisting = pickedList.some(t => data.records.some(r => r.no === me.no && (r.name === me.name || r.name.indexOf(me.name) >= 0) && r.task === t));
 
-  let confirmMsg = `${me.name} 님, 선택한 ${picked.size}개 항목의 제출 여부를 등록할까요?`;
+  let confirmMsg = isUpdatingExisting
+    ? `${me.name} 님, 선택한 ${pickedList.length}개 연수의 이수증 및 정보를 갱신 등록할까요?`
+    : `${me.name} 님, 선택한 ${pickedList.length}개 항목의 제출 여부를 등록할까요?`;
+
   if (attachedCount > 0) {
     confirmMsg += `\n(첨부 파일 ${attachedCount}개 포함)`;
   }
@@ -940,6 +1090,7 @@ $('submitBtn').addEventListener('click', async () => {
     confirmMsg += `\n\n[안내] 👨‍🏫 '다문화 교육' 이수 항목이 포함되어 있습니다. (교사 전용 연수)`;
   }
   if (!confirm(confirmMsg)) return;
+
   busy = true;
   clearTimeout(idleTimer);
   $('submitBtn').disabled = true;
@@ -966,6 +1117,7 @@ $('submitBtn').addEventListener('click', async () => {
       certNos: certNosMap,
       certTypes: certTypesMap
     });
+
     res.added.forEach(task => {
       const f = filesMap[task];
       const memoText = memosMap[task] || '';
@@ -977,9 +1129,28 @@ $('submitBtn').addEventListener('click', async () => {
       if (memoText) parts.push(memoText);
       if (f) parts.push(`이수증: ${f.name}`);
       const fullMemo = parts.join(' / ');
-      data.records.push({ no: me.no, name: me.name, task, memo: fullMemo, file: f, certNo, certType });
+
+      const existingIdx = data.records.findIndex(r => r.no === me.no && (r.name === me.name || r.name.indexOf(me.name) >= 0) && r.task === task);
+      if (existingIdx >= 0) {
+        data.records[existingIdx] = {
+          no: me.no,
+          name: me.name,
+          task,
+          memo: fullMemo,
+          file: f || data.records[existingIdx].file,
+          certNo: certNo || data.records[existingIdx].certNo,
+          certType: certType || data.records[existingIdx].certType
+        };
+      } else {
+        data.records.push({ no: me.no, name: me.name, task, memo: fullMemo, file: f, certNo, certType });
+      }
     });
-    $('doneTitle').textContent = `${me.name} 님, 제출 여부가 등록되었습니다!`;
+
+    editingDoneTasks.clear();
+    $('doneTitle').textContent = isUpdatingExisting
+      ? `${me.name} 님, 이수증 및 정보가 성공적으로 갱신되었습니다!`
+      : `${me.name} 님, 제출 여부가 등록되었습니다!`;
+
     $('doneList').innerHTML = res.added.map(t => {
       const f = filesMap[t];
       const memoText = memosMap[t];
@@ -991,7 +1162,7 @@ $('submitBtn').addEventListener('click', async () => {
         ${f ? `<small style="display:block; font-size:15px; color:#64748b; margin-top:2px;">📎 첨부 파일: ${esc(f.name)}</small>` : ''}
       </li>`;
     }).join('');
-    $('doneNote').textContent = res.dups.length ? `이미 제출되어 있던 항목: ${res.dups.join(', ')}` : '';
+    $('doneNote').textContent = res.dups && res.dups.length ? `이미 처리되어 있던 항목: ${res.dups.join(', ')}` : '';
     show('done');
     let n = 5;
     $('countdown').textContent = n;
@@ -1003,7 +1174,9 @@ $('submitBtn').addEventListener('click', async () => {
   } finally {
     busy = false;
   }
-});
+}
+
+$('submitBtn').addEventListener('click', () => doSubmitCertificates());
 
 $('done').addEventListener('click', reset);
 
@@ -1016,6 +1189,7 @@ function reset() {
   pickedCertNos.clear();
   pickedCertTypes.clear();
   ocrScanningMap.clear();
+  editingDoneTasks.clear();
   if (data) show('home');
   load(true);
 }
