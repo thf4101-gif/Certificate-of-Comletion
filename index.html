@@ -108,23 +108,45 @@
   .tb-method-btn:hover { border-color: #0d9488; background: #f0fdfa; color: #0f766e; }
   .tb-method-btn.active { border-color: #0d9488; background: #0d9488; color: #ffffff; font-weight: 800; box-shadow: 0 3px 8px rgba(13,148,136,0.25); }
 
-  /* 이수증 파일 첨부 UI */
-  .file-attach-box { margin-top: 10px; padding: 10px 14px; border-radius: 12px; background: #ffffff; border: 1.5px dashed #cbd5e1;
-    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; cursor: default; }
-  .file-attach-box.has-file { border-style: solid; border-color: #2f6fed; background: #f0f7ff; }
-  .file-attach-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; color: #2f6fed;
-    background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 9px; padding: 7px 14px; cursor: pointer; transition: all .15s; }
+  /* 이수증 파일 첨부 & 자동 스캔 UI */
+  .file-attach-box { margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: #ffffff; border: 1.5px dashed #cbd5e1;
+    display: flex; flex-direction: column; gap: 10px; cursor: default; }
+  .file-attach-box.has-file { border-style: solid; border-color: #2f6fed; background: #f8fbff; }
+  .file-action-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .file-btn-group { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .file-scan-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 800; color: #ffffff;
+    background: #2563eb; border: 1.5px solid #1d4ed8; border-radius: 10px; padding: 8px 14px; cursor: pointer; transition: all .15s; box-shadow: 0 2px 6px rgba(37,99,235,.25); }
+  .file-scan-btn:hover { background: #1d4ed8; }
+  .file-scan-btn:active { transform: scale(.97); }
+  .file-attach-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 700; color: #2f6fed;
+    background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 10px; padding: 8px 14px; cursor: pointer; transition: all .15s; }
   .file-attach-btn:hover { background: #dbeafe; border-color: #2f6fed; }
   .file-attach-btn:active { transform: scale(.97); }
   .file-attach-hint { font-size: 13px; color: #64748b; }
   .file-preview-wrap { display: flex; align-items: center; gap: 10px; font-size: 14px; max-width: 100%; overflow: hidden; }
-  .file-thumb { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; border: 1.5px solid #cbd5e1; flex-shrink: 0; background: #f8fafc; }
-  .file-pdf-icon { width: 40px; height: 40px; border-radius: 8px; background: #fee2e2; color: #dc2626; display: grid; place-items: center; font-size: 18px; font-weight: 800; flex-shrink: 0; }
+  .file-thumb { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; border: 1.5px solid #cbd5e1; flex-shrink: 0; background: #f8fafc; }
+  .file-pdf-icon { width: 44px; height: 44px; border-radius: 8px; background: #fee2e2; color: #dc2626; display: grid; place-items: center; font-size: 18px; font-weight: 800; flex-shrink: 0; }
   .file-info-text { display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
-  .file-name { font-weight: 700; font-size: 14px; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
+  .file-name { font-weight: 700; font-size: 14px; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
   .file-size { font-size: 12px; color: #64748b; margin-top: 1px; }
-  .btn-file-del { background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c; border-radius: 8px; padding: 5px 10px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .15s; }
+  .btn-file-del { background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .15s; }
   .btn-file-del:hover { background: #fecaca; }
+
+  /* OCR 스캔 상태 바 */
+  .ocr-scanning-box { background: #eff6ff; border: 1.5px solid #93c5fd; border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; animation: pulseGlow 1.5s infinite alternate; }
+  .ocr-scanning-head { display: flex; align-items: center; justify-content: space-between; font-size: 13.5px; font-weight: 700; color: #1e40af; }
+  .ocr-bar-track { width: 100%; height: 8px; background: #dbeafe; border-radius: 99px; overflow: hidden; }
+  .ocr-bar-fill { height: 100%; background: #2563eb; border-radius: 99px; transition: width .2s; }
+  @keyframes pulseGlow { from { box-shadow: 0 0 0 rgba(37,99,235,0); } to { box-shadow: 0 0 10px rgba(37,99,235,0.25); } }
+
+  /* 이수번호 & 연수형태 입력 폼 */
+  .cert-fields-box { background: #ffffff; border: 1.5px solid #dbeafe; border-radius: 12px; padding: 12px 14px; display: grid; gap: 10px; }
+  .cert-extracted-badge { display: inline-flex; align-items: center; gap: 6px; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; border-radius: 8px; padding: 4px 10px; font-size: 12.5px; font-weight: 700; width: fit-content; }
+  .cert-field-row { display: grid; grid-template-columns: 80px 1fr; gap: 8px; align-items: center; }
+  .cert-field-row label { font-size: 13px; font-weight: 700; color: #334155; }
+  .cert-field-row input, .cert-field-row select { font-size: 14px; font-weight: 600; padding: 8px 12px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-family: inherit; color: #1e293b; background: #fff; }
+  .cert-field-row input:focus, .cert-field-row select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+  .cert-field-hint { font-size: 12px; color: #64748b; margin-left: 88px; margin-top: -4px; }
 
   .bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--line);
     padding: 16px 24px; display: flex; justify-content: center; z-index: 10; }
@@ -255,10 +277,14 @@
 
 <script src="config.js"></script>
 <script src="assets/api.js"></script>
+<script src="assets/cert-scanner.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const { esc, CFG, session } = U;
 let data = null, me = null, picked = new Set(), pickedFiles = new Map(), busy = false, idleTimer = null, doneTimer = null;
+let pickedCertNos = new Map();   // 연수명별 이수번호
+let pickedCertTypes = new Map(); // 연수명별 연수형태
+let ocrScanningMap = new Map();  // 연수명별 스캔 상태
 
 $('title').textContent = CFG.title || '교직원 연수 이수증 수합';
 $('className').textContent = CFG.className || '';
@@ -305,6 +331,9 @@ $('students').addEventListener('click', e => {
   me = data.students[+b.dataset.i];
   picked.clear();
   pickedFiles.clear();
+  pickedCertNos.clear();
+  pickedCertTypes.clear();
+  ocrScanningMap.clear();
   renderTasks();
   show('step2');
   armIdle();
@@ -577,28 +606,105 @@ function renderTasks() {
       </div>
     ` : '';
 
-    const fileBoxHtml = on ? `
+    const curCertNo = pickedCertNos.get(t.name) || '';
+    const curCertType = pickedCertTypes.get(t.name) || (isSenior ? '대면교육' : '원격 연수');
+    const scanInfo = ocrScanningMap.get(t.name);
+
+    const fileBoxHtml = on ? (isTb ? `
       <div class="file-attach-box ${fileObj ? 'has-file' : ''}" data-task="${esc(t.name)}" style="width:100%;">
-        ${fileObj ? `
-          <div class="file-preview-wrap">
-            ${isPdf ? `<span class="file-pdf-icon">PDF</span>` : `<img class="file-thumb" src="${fileObj.dataUrl}" alt="미리보기">`}
-            <div class="file-info-text">
-              <span class="file-name" title="${esc(fileObj.name)}">📎 ${esc(fileObj.name)}</span>
-              <span class="file-size">${formatSize(fileObj.size)}</span>
+        <div class="file-action-row">
+          ${fileObj ? `
+            <div class="file-preview-wrap">
+              ${isPdf ? `<span class="file-pdf-icon">PDF</span>` : `<img class="file-thumb" src="${fileObj.dataUrl}" alt="미리보기">`}
+              <div class="file-info-text">
+                <span class="file-name" title="${esc(fileObj.name)}">📎 ${esc(fileObj.name)}</span>
+                <span class="file-size">${formatSize(fileObj.size)}</span>
+              </div>
+            </div>
+            <button type="button" class="btn-file-del" data-action="delfile" data-task="${esc(t.name)}">✕ 파일 삭제</button>
+          ` : `
+            <div class="file-preview-wrap">
+              <span class="file-attach-hint">📎 검진결과서 또는 수검확인증 첨부 (선택)</span>
+            </div>
+            <div class="file-btn-group">
+              <label class="file-attach-btn" data-action="pickfile" data-task="${esc(t.name)}">
+                📁 결과서 파일 첨부
+                <input type="file" accept="image/*,application/pdf" class="file-input" data-task="${esc(t.name)}" style="display:none;">
+              </label>
+            </div>
+          `}
+        </div>
+      </div>
+    ` : `
+      <div class="file-attach-box ${fileObj ? 'has-file' : ''}" data-task="${esc(t.name)}" style="width:100%;">
+        <div class="file-action-row">
+          ${fileObj ? `
+            <div class="file-preview-wrap">
+              ${isPdf ? `<span class="file-pdf-icon">PDF</span>` : `<img class="file-thumb" src="${fileObj.dataUrl}" alt="미리보기">`}
+              <div class="file-info-text">
+                <span class="file-name" title="${esc(fileObj.name)}">📎 ${esc(fileObj.name)}</span>
+                <span class="file-size">${formatSize(fileObj.size)}</span>
+              </div>
+            </div>
+            <div class="file-btn-group">
+              ${!isPdf ? `<button type="button" class="file-attach-btn" data-action="rescan" data-task="${esc(t.name)}" style="font-size:12.5px; padding:6px 12px;">🔄 다시 스캔</button>` : ''}
+              <button type="button" class="btn-file-del" data-action="delfile" data-task="${esc(t.name)}">✕ 파일 삭제</button>
+            </div>
+          ` : `
+            <div class="file-preview-wrap">
+              <span class="file-attach-hint">📸 이수증을 스캔하면 이수번호가 자동으로 추출·등록됩니다:</span>
+            </div>
+            <div class="file-btn-group">
+              <label class="file-scan-btn" data-action="scanfile" data-task="${esc(t.name)}">
+                📷 이수증 스캔 (카메라)
+                <input type="file" accept="image/*" capture="environment" class="file-input" data-task="${esc(t.name)}" style="display:none;">
+              </label>
+              <label class="file-attach-btn" data-action="pickfile" data-task="${esc(t.name)}">
+                📁 이수증 파일 선택 (사진·PDF)
+                <input type="file" accept="image/*,application/pdf" class="file-input" data-task="${esc(t.name)}" style="display:none;">
+              </label>
+            </div>
+          `}
+        </div>
+
+        ${scanInfo ? `
+          <div class="ocr-scanning-box">
+            <div class="ocr-scanning-head">
+              <span>🔍 이수증에서 이수번호를 자동으로 인식하는 중입니다...</span>
+              <span class="ocr-status-${esc(t.name)}">${scanInfo.pct}%</span>
+            </div>
+            <div class="ocr-bar-track">
+              <div class="ocr-bar-fill ocr-progress-${esc(t.name)}" style="width:${scanInfo.pct}%;"></div>
             </div>
           </div>
-          <button type="button" class="btn-file-del" data-action="delfile" data-task="${esc(t.name)}">✕ 파일 삭제</button>
-        ` : `
-          <div class="file-preview-wrap">
-            <span class="file-attach-hint">📎 ${isTb ? '검진결과서·확인증' : '이수증'} 파일(사진·PDF) 첨부 (선택)</span>
+        ` : ''}
+
+        <div class="cert-fields-box">
+          ${curCertNo ? `
+            <div class="cert-extracted-badge">
+              <span>✨</span>
+              <span>${fileObj ? '이수증 자동 스캔 완료' : '이수번호 기입됨'}</span>
+            </div>
+          ` : ''}
+          <div class="cert-field-row">
+            <label for="certNo_${i}">이수번호</label>
+            <input type="text" id="certNo_${i}" data-field="certNo" data-task="${esc(t.name)}" value="${esc(curCertNo)}" placeholder="예: NO. 공무원 성인지 사이버-2026-0988935 또는 수비초-7571">
           </div>
-          <label class="file-attach-btn" data-action="pickfile" data-task="${esc(t.name)}">
-            📁 파일 첨부
-            <input type="file" accept="image/*,application/pdf" class="file-input" data-task="${esc(t.name)}" style="display:none;">
-          </label>
-        `}
+          <div class="cert-field-hint">💡 이수증을 스캔/첨부하면 자동 추출되며, 직접 수정하거나 타이핑할 수 있습니다.</div>
+
+          <div class="cert-field-row" style="margin-top:2px;">
+            <label for="certType_${i}">연수 형태</label>
+            <select id="certType_${i}" data-field="certType" data-task="${esc(t.name)}">
+              <option value="원격 연수" ${curCertType === '원격 연수' ? 'selected' : ''}>원격 연수 (사이버 교육)</option>
+              <option value="대면교육" ${curCertType === '대면교육' ? 'selected' : ''}>대면교육 (집합 교육)</option>
+              <option value="내부교직원 활용 대면교육 1시간" ${curCertType.includes('내부교직원') ? 'selected' : ''}>내부교직원 활용 대면교육 1시간</option>
+              <option value="외부강사 활용 대면교육 2시간" ${curCertType.includes('외부강사') ? 'selected' : ''}>외부강사 활용 대면교육 2시간</option>
+              <option value="학교 자체 대면연수" ${curCertType === '학교 자체 대면연수' ? 'selected' : ''}>학교 자체 대면연수</option>
+            </select>
+          </div>
+        </div>
       </div>
-    ` : '';
+    `) : '';
 
     return `<div role="button" tabindex="0" class="task ${extraClass} ${isDone ? 'done' : on ? 'on' : ''}" data-i="${i}" ${isDisabled ? 'style="pointer-events:none; opacity:.7;"' : ''} style="flex-direction:column; align-items:stretch;">
       <div style="display:flex; align-items:center; gap:16px; width:100%;">
@@ -621,8 +727,12 @@ function renderTasks() {
   $('submitBtn').textContent = picked.size ? `${picked.size}개 제출 등록하기` : '연수를 선택해 주세요';
 }
 
-// 결핵검진 입력 필드 이벤트 핸들러
+// 결핵검진 및 이수번호 입력 필드 이벤트 핸들러
 $('tasks').addEventListener('input', e => {
+  if (e.target.dataset.field === 'certNo') {
+    pickedCertNos.set(e.target.dataset.task, e.target.value.trim());
+    return;
+  }
   if (e.target.id === 'tbEvenCheck') tbState.evenDone = e.target.checked;
   if (e.target.id === 'tbEvenDate') tbState.evenDate = e.target.value;
   if (e.target.id === 'tbEvenHosp') tbState.evenHospital = e.target.value.trim();
@@ -633,11 +743,16 @@ $('tasks').addEventListener('input', e => {
   if (e.target.id === 'tbOtherDate') tbState.otherDate = e.target.value;
 });
 
-// 파일 선택 변경 이벤트
+// 파일 선택 및 연수형태 변경 이벤트
 $('tasks').addEventListener('change', async e => {
+  if (e.target.dataset.field === 'certType') {
+    pickedCertTypes.set(e.target.dataset.task, e.target.value);
+    return;
+  }
   if (e.target.id === 'tbEvenDate') tbState.evenDate = e.target.value;
   if (e.target.id === 'tbOddDate') tbState.oddDate = e.target.value;
   if (e.target.id === 'tbOtherDate') tbState.otherDate = e.target.value;
+
   const input = e.target.closest('.file-input');
   if (!input || !input.files || !input.files[0]) return;
   const taskName = input.dataset.task;
@@ -645,6 +760,31 @@ $('tasks').addEventListener('change', async e => {
   try {
     const fileData = await compressImage(file);
     pickedFiles.set(taskName, fileData);
+
+    // 이미지 파일인 경우 자동으로 OCR 스캔 실행하여 이수번호 자동 추출
+    if (fileData.type && fileData.type.includes('image') && !isTbTask(taskName)) {
+      ocrScanningMap.set(taskName, { pct: 15, status: 'OCR 엔진 준비 중...' });
+      renderTasks();
+      try {
+        const ocrResult = await CertScanner.scanCertificateImage(fileData.dataUrl, (pct, status) => {
+          ocrScanningMap.set(taskName, { pct, status });
+          const progEl = document.querySelector(`.ocr-progress-${CSS.escape(taskName)}`);
+          if (progEl) progEl.style.width = pct + '%';
+          const statEl = document.querySelector(`.ocr-status-${CSS.escape(taskName)}`);
+          if (statEl) statEl.textContent = `${pct}%`;
+        });
+        ocrScanningMap.delete(taskName);
+        if (ocrResult.certNo) {
+          pickedCertNos.set(taskName, ocrResult.certNo);
+        }
+        if (ocrResult.certType) {
+          pickedCertTypes.set(taskName, ocrResult.certType);
+        }
+      } catch (ocrErr) {
+        console.warn('OCR error:', ocrErr);
+        ocrScanningMap.delete(taskName);
+      }
+    }
     renderTasks();
   } catch (err) {
     alert(err.message || '파일을 불러오지 못했습니다.');
@@ -652,6 +792,35 @@ $('tasks').addEventListener('change', async e => {
 });
 
 $('tasks').addEventListener('click', e => {
+  // 다시 스캔 버튼
+  const rescanBtn = e.target.closest('[data-action="rescan"]');
+  if (rescanBtn) {
+    e.stopPropagation();
+    const taskName = rescanBtn.dataset.task;
+    const fileData = pickedFiles.get(taskName);
+    if (fileData && fileData.dataUrl) {
+      ocrScanningMap.set(taskName, { pct: 15, status: '다시 스캔 중...' });
+      renderTasks();
+      CertScanner.scanCertificateImage(fileData.dataUrl, (pct, status) => {
+        ocrScanningMap.set(taskName, { pct, status });
+        const progEl = document.querySelector(`.ocr-progress-${CSS.escape(taskName)}`);
+        if (progEl) progEl.style.width = pct + '%';
+        const statEl = document.querySelector(`.ocr-status-${CSS.escape(taskName)}`);
+        if (statEl) statEl.textContent = `${pct}%`;
+      }).then(ocrResult => {
+        ocrScanningMap.delete(taskName);
+        if (ocrResult.certNo) pickedCertNos.set(taskName, ocrResult.certNo);
+        if (ocrResult.certType) pickedCertTypes.set(taskName, ocrResult.certType);
+        renderTasks();
+      }).catch(err => {
+        ocrScanningMap.delete(taskName);
+        renderTasks();
+        alert('스캔 중 오류가 발생했습니다: ' + (err.message || err));
+      });
+    }
+    return;
+  }
+
   // 결핵검진 탭 및 검진방식 버튼 클릭 처리
   if (e.target.closest('.tb-config-box')) {
     const tabBtn = e.target.closest('[data-tb-tab]');
@@ -668,7 +837,6 @@ $('tasks').addEventListener('click', e => {
       renderTasks();
       return;
     }
-    // 인풋/라벨 클릭 시 카드 토글 방지
     if (e.target.closest('input') || e.target.closest('label') || e.target.closest('select')) {
       e.stopPropagation();
       return;
@@ -677,15 +845,21 @@ $('tasks').addEventListener('click', e => {
     return;
   }
 
-  // 파일 첨부 또는 삭제 클릭 시 태스크 선택 토글 방지
+  // 파일 삭제 클릭 시
   const delBtn = e.target.closest('[data-action="delfile"]');
   if (delBtn) {
     e.stopPropagation();
-    pickedFiles.delete(delBtn.dataset.task);
+    const taskName = delBtn.dataset.task;
+    pickedFiles.delete(taskName);
+    ocrScanningMap.delete(taskName);
     renderTasks();
     return;
   }
-  if (e.target.closest('.file-attach-box') || e.target.closest('.file-input') || e.target.closest('.file-attach-btn')) {
+
+  // 이수번호 입력 박스, 인풋, 셀렉트 클릭 시 카드 토글 방지
+  if (e.target.closest('.cert-fields-box') || e.target.closest('.file-attach-box') ||
+      e.target.closest('input') || e.target.closest('select') || e.target.closest('label') ||
+      e.target.closest('.file-input') || e.target.closest('.file-attach-btn') || e.target.closest('.file-scan-btn')) {
     return;
   }
 
@@ -746,6 +920,13 @@ $('submitBtn').addEventListener('click', async () => {
   if (attachedCount > 0) {
     confirmMsg += `\n(첨부 파일 ${attachedCount}개 포함)`;
   }
+
+  const certDetails = pickedList.filter(t => pickedCertNos.has(t) && pickedCertNos.get(t))
+    .map(t => `• ${t}: [${pickedCertNos.get(t)}] (${pickedCertTypes.get(t) || '원격 연수'})`);
+  if (certDetails.length > 0) {
+    confirmMsg += `\n\n[📜 이수번호 등록 정보]\n${certDetails.join('\n')}`;
+  }
+
   if (hasTbPicked) {
     confirmMsg += `\n\n[안내] 🫁 활동성 결핵검진 수검 정보:\n→ ${getTbMemo()}`;
   }
@@ -766,26 +947,48 @@ $('submitBtn').addEventListener('click', async () => {
 
   const filesMap = {};
   const memosMap = {};
+  const certNosMap = {};
+  const certTypesMap = {};
   pickedList.forEach(t => {
     if (pickedFiles.has(t)) filesMap[t] = pickedFiles.get(t);
     if (isTbTask(t)) memosMap[t] = getTbMemo();
+    if (pickedCertNos.has(t)) certNosMap[t] = pickedCertNos.get(t);
+    if (pickedCertTypes.has(t)) certTypesMap[t] = pickedCertTypes.get(t);
   });
 
   try {
-    const res = await Api.call('submit', { no: me.no, name: me.name, tasks: pickedList, files: filesMap, memos: memosMap });
+    const res = await Api.call('submit', {
+      no: me.no,
+      name: me.name,
+      tasks: pickedList,
+      files: filesMap,
+      memos: memosMap,
+      certNos: certNosMap,
+      certTypes: certTypesMap
+    });
     res.added.forEach(task => {
       const f = filesMap[task];
       const memoText = memosMap[task] || '';
-      const fullMemo = f ? (memoText ? `${memoText} / 이수증: ${f.name}` : `이수증: ${f.name}`) : memoText;
-      data.records.push({ no: me.no, name: me.name, task, memo: fullMemo, file: f });
+      const certNo = certNosMap[task] || '';
+      const certType = certTypesMap[task] || '';
+      const parts = [];
+      if (certNo) parts.push(`이수번호: ${certNo}`);
+      if (certType) parts.push(`연수형태: ${certType}`);
+      if (memoText) parts.push(memoText);
+      if (f) parts.push(`이수증: ${f.name}`);
+      const fullMemo = parts.join(' / ');
+      data.records.push({ no: me.no, name: me.name, task, memo: fullMemo, file: f, certNo, certType });
     });
     $('doneTitle').textContent = `${me.name} 님, 제출 여부가 등록되었습니다!`;
     $('doneList').innerHTML = res.added.map(t => {
       const f = filesMap[t];
       const memoText = memosMap[t];
+      const certNo = certNosMap[t];
+      const certType = certTypesMap[t] || '원격 연수';
       return `<li>✅ ${esc(t)}
+        ${certNo ? `<small style="display:block; font-size:16px; color:#2563eb; font-weight:700; margin-top:4px;">📜 이수번호: ${esc(certNo)} <span style="font-weight:normal; color:#475569;">(${esc(certType)})</span></small>` : ''}
         ${memoText ? `<small style="display:block; font-size:16px; color:#0d9488; font-weight:700; margin-top:4px;">🫁 수검 정보: ${esc(memoText)}</small>` : ''}
-        ${f ? `<small style="display:block; font-size:16px; color:#2563eb; margin-top:4px;">📎 첨부 파일: ${esc(f.name)}</small>` : ''}
+        ${f ? `<small style="display:block; font-size:15px; color:#64748b; margin-top:2px;">📎 첨부 파일: ${esc(f.name)}</small>` : ''}
       </li>`;
     }).join('');
     $('doneNote').textContent = res.dups.length ? `이미 제출되어 있던 항목: ${res.dups.join(', ')}` : '';
@@ -810,6 +1013,9 @@ function reset() {
   me = null;
   picked.clear();
   pickedFiles.clear();
+  pickedCertNos.clear();
+  pickedCertTypes.clear();
+  ocrScanningMap.clear();
   if (data) show('home');
   load(true);
 }

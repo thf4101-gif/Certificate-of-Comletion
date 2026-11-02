@@ -78,7 +78,7 @@
 
   const demo = {
     getStudentData() { const d = dload(); return { students: d.students, tasks: d.tasks, records: d.records }; },
-    submit({ no, name, tasks, files, memos }) {
+    submit({ no, name, tasks, files, memos, certNos, certTypes }) {
       const d = dload(), time = fmt(new Date()), added = [], dups = [];
       tasks.forEach(t => {
         if (has(d, no, name, t)) dups.push(t);
@@ -86,10 +86,15 @@
           added.push(t);
           const f = files && files[t] ? files[t] : null;
           let memoText = memos && memos[t] ? memos[t] : '';
-          if (f && f.name) {
-            memoText = memoText ? `${memoText} / 파일: ${f.name}` : `파일첨부: ${f.name}`;
-          }
-          d.records.push({ time, no, name, task: t, memo: memoText, file: f });
+          const certNo = (certNos && certNos[t]) ? String(certNos[t]).trim() : '';
+          const certType = (certTypes && certTypes[t]) ? String(certTypes[t]).trim() : '원격 연수';
+          const parts = [];
+          if (certNo) parts.push(`이수번호: ${certNo}`);
+          if (certType) parts.push(`연수형태: ${certType}`);
+          if (memoText) parts.push(memoText);
+          if (f && f.name) parts.push(`파일: ${f.name}`);
+          const fullMemo = parts.join(' / ');
+          d.records.push({ time, no, name, task: t, memo: fullMemo, file: f, certNo, certType });
         }
       });
       dsave(d); return { added, dups, time };
@@ -100,9 +105,11 @@
     getDashboard() { const d = dload(); return { students: d.students, tasks: d.tasks, records: d.records, updated: fmt(new Date()).slice(11), sheetName: '', sheetUrl: '' }; },
     toggleRecord({ no, name, task }) {
       const d = dload(), i = d.records.findIndex(r => r.no === no && r.name === name && r.task === task);
-      if (i >= 0) d.records.splice(i, 1); else d.records.push({ time: fmt(new Date()), no, name, task, memo: '담당자 확인' });
+      if (i >= 0) d.records.splice(i, 1);
+      else d.records.push({ time: fmt(new Date()), no, name, task, memo: '담당자 확인', certNo: '담당자 직접 확인', certType: '대면/직접확인' });
       dsave(d); return { submitted: i < 0 };
     },
+    syncTaskSheets() { return { success: true, count: dload().tasks.length }; },
     addTask({ name, due }) {
       const d = dload(); name = String(name || '').trim();
       if (!name) throw new Error('연수명을 입력하세요.');

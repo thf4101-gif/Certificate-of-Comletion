@@ -256,6 +256,15 @@
         </div>
 
         <div class="panel">
+          <h2>📑 스프레드시트 연수별 개별 시트 생성 & 동기화</h2>
+          <p class="hint">성인지교육, 4대폭력예방교육, 감염병 예방 등 <b>각 연수별 전용 시트(탭)</b>를 자동으로 생성하고, 교직원 명단 및 이수번호·연수형태를 각 시트의 행에 동기화합니다.</p>
+          <div class="row" style="margin-top:10px;">
+            <button class="btn sheet" id="syncSheetsBtn">📑 연수별 시트 생성 및 동기화 실행</button>
+            <span class="msgline" id="syncSheetsMsg"></span>
+          </div>
+        </div>
+
+        <div class="panel">
           <h2>📘 처음 연동하는 방법</h2>
           <ol class="steps">
             <li><a href="https://sheets.new" target="_blank" rel="noopener">새 구글 스프레드시트 만들기</a></li>
@@ -385,15 +394,25 @@ let curModalTarget = null;
 function openCertModal(s, task, r) {
   curModalTarget = { s, task };
   $('certTitle').innerHTML = `📄 이수증 확인 — <b>${esc(s.name)}</b> 님`;
+  const certNo = r.certNo || (r.memo && /이수번호:\s*([^/|\]\n]+)/.exec(r.memo) ? /이수번호:\s*([^/|\]\n]+)/.exec(r.memo)[1].trim() : '');
+  const certType = r.certType || (r.memo && /연수형태:\s*([^/|\]\n]+)/.exec(r.memo) ? /연수형태:\s*([^/|\]\n]+)/.exec(r.memo)[1].trim() : '');
+
   let metaHtml = `<div><b>교직원:</b> ${esc(s.no)}번 ${esc(s.name)}</div>`;
   metaHtml += `<div><b>연수 항목:</b> ${esc(task)}</div>`;
+  if (certNo) {
+    metaHtml += `<div style="background:#eff6ff; color:#1d4ed8; border:1.5px solid #bfdbfe; padding:8px 12px; border-radius:10px; margin:6px 0; font-weight:800; font-size:15px;">📜 <b>이수번호:</b> ${esc(certNo)}</div>`;
+  }
+  if (certType) {
+    metaHtml += `<div><b>연수 형태:</b> <span style="font-weight:700; color:#334155;">${esc(certType)}</span></div>`;
+  }
   metaHtml += `<div><b>제출 일시:</b> ${esc(r.time || '기록 없음')}</div>`;
+
   if (r.memo) {
     const isTb = /결핵|흉부\s*X선|흉부\s*엑스선|X-ray/i.test(task) || /짝수년도|홀수년도|출장검진|결핵검진/i.test(r.memo);
     if (isTb) {
       metaHtml += `<div style="background:#ccfbf1; color:#0f766e; border:1px solid #99f6e4; padding:8px 12px; border-radius:8px; margin-top:6px; font-weight:700;">🫁 <b>결핵검진 수검 정보:</b> ${esc(r.memo)}</div>`;
     } else {
-      metaHtml += `<div><b>비고 / 메모:</b> ${esc(r.memo)}</div>`;
+      metaHtml += `<div style="color:#64748b; font-size:13px; margin-top:4px;"><b>메모:</b> ${esc(r.memo)}</div>`;
     }
   }
   $('certMeta').innerHTML = metaHtml;
@@ -514,8 +533,9 @@ function renderStatus() {
       const cells = D.tasks.map((t, j) => {
         const r = map.get(K(s.no, s.name, t.name));
         if (r) n++;
+        const certNo = r ? (r.certNo || (r.memo && /이수번호:\s*([^/|\]\n]+)/.exec(r.memo) ? /이수번호:\s*([^/|\]\n]+)/.exec(r.memo)[1].trim() : '')) : '';
         const hasFile = r && (r.file || (r.memo && /이수증:|첨부:|^https?:\/\//.test(r.memo)));
-        const tip = r ? `${r.time} 제출${r.memo ? ' · ' + r.memo : ''}${hasFile ? ' (클릭 시 이수증 확인)' : ''}` : '미제출 (클릭 시 제출 처리)';
+        const tip = r ? `${r.time} 제출${certNo ? ' · [이수번호: ' + certNo + ']' : ''}${r.memo ? ' · ' + r.memo : ''}${hasFile ? ' (클릭 시 이수증 확인)' : ''}` : '미제출 (클릭 시 제출 처리)';
         return `<td class="c" data-s="${idx}" data-t="${j}" title="${esc(tip)}"><span class="dot ${r ? 'on' : ''} ${r && r.memo ? 'manual' : ''}"></span>${hasFile ? '<span style="font-size:12px; margin-left:3px; vertical-align:middle;" title="이수증 파일 첨부됨">📎</span>' : ''}</td>`;
       }).join('');
       const pct = nT ? Math.round(n / nT * 100) : 0;
@@ -569,16 +589,39 @@ $('csvBtn').addEventListener('click', () => {
     if (/^[\s]*[=+@-]/.test(s)) s = "'" + s;
     return `"${s.replace(/"/g, '""')}"`;
   };
-  const lines = [['번호', '이름', ...D.tasks.map(t => t.name), '제출 수'].map(q).join(',')];
+  const headers = ['번호', '이름'];
+  D.tasks.forEach(t => {
+    headers.push(`${t.name} (제출일시)`);
+    headers.push(`${t.name} (이수번호)`);
+    headers.push(`${t.name} (연수형태)`);
+  });
+  headers.push('제출 수');
+  const lines = [headers.map(q).join(',')];
   D.students.forEach(s => {
     let n = 0;
-    const cells = D.tasks.map(t => { const r = map.get(K(s.no, s.name, t.name)); if (r) n++; return r ? '○ ' + r.time : ''; });
-    lines.push([s.no, s.name, ...cells, `${n}/${D.tasks.length}`].map(q).join(','));
+    const row = [s.no, s.name];
+    D.tasks.forEach(t => {
+      const r = map.get(K(s.no, s.name, t.name));
+      if (r) {
+        n++;
+        const certNo = r.certNo || (r.memo && /이수번호:\s*([^/|\]\n]+)/.exec(r.memo) ? /이수번호:\s*([^/|\]\n]+)/.exec(r.memo)[1].trim() : '');
+        const certType = r.certType || (r.memo && /연수형태:\s*([^/|\]\n]+)/.exec(r.memo) ? /연수형태:\s*([^/|\]\n]+)/.exec(r.memo)[1].trim() : '원격 연수');
+        row.push(r.time || '제출');
+        row.push(certNo || '');
+        row.push(certType || '');
+      } else {
+        row.push('');
+        row.push('');
+        row.push('');
+      }
+    });
+    row.push(`${n}/${D.tasks.length}`);
+    lines.push(row.map(q).join(','));
   });
   const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `연수이수증_수합현황_${today()}.csv`;
+  a.download = `연수이수증_수합현황(이수번호포함)_${today()}.csv`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 });
@@ -727,6 +770,23 @@ $('copyCode').addEventListener('click', async () => {
     toast('Apps Script 코드를 복사했습니다');
   } catch (e) {
     alert('GitHub 저장소의 apps-script/Code.gs 파일의 내용을 복사하세요.');
+  }
+});
+
+$('syncSheetsBtn').addEventListener('click', async () => {
+  $('syncSheetsMsg').className = 'msgline';
+  $('syncSheetsMsg').textContent = '스프레드시트 연수별 시트 생성 및 동기화 중…';
+  $('syncSheetsBtn').disabled = true;
+  try {
+    const res = await Api.call('syncTaskSheets', { pin });
+    $('syncSheetsMsg').className = 'msgline ok';
+    $('syncSheetsMsg').textContent = `✅ 성공: 총 ${res.count || D.tasks.length}개 연수의 개별 시트가 생성·동기화되었습니다!`;
+    toast('연수별 시트 동기화 완료!');
+  } catch (err) {
+    $('syncSheetsMsg').className = 'msgline err';
+    $('syncSheetsMsg').textContent = '동기화 실패: ' + (err.message || err);
+  } finally {
+    $('syncSheetsBtn').disabled = false;
   }
 });
 
