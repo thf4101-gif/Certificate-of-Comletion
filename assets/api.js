@@ -17,6 +17,15 @@
     set(k, v) { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch (e) {} },
   };
 
+  // URL 쿼리 파라미터(?api=https://...)가 포함된 링크로 접속 시 자동으로 브라우저에 연동 주소 저장
+  try {
+    const searchParams = new URLSearchParams(window.location.search);
+    const paramUrl = searchParams.get('api');
+    if (paramUrl && /^https:\/\/script\.google(usercontent)?\.com\/.+/.test(paramUrl.trim())) {
+      store.set(URL_KEY, paramUrl.trim());
+    }
+  } catch (ignore) {}
+
   const p2 = n => String(n).padStart(2, '0');
   const fmt = d => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -127,6 +136,13 @@
   /* ───── 공개 API ───── */
   window.Api = {
     get url() {
+      try {
+        const searchParams = new URLSearchParams(window.location.search);
+        const paramUrl = searchParams.get('api');
+        if (paramUrl && /^https:\/\/script\.google(usercontent)?\.com\/.+/.test(paramUrl.trim())) {
+          return paramUrl.trim();
+        }
+      } catch (ignore) {}
       const v = store.get(URL_KEY);
       if (v === 'demo') return '';
       return v || CFG.apiUrl || '';

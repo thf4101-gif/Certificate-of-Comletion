@@ -34,6 +34,16 @@ function setup() {
 }
 
 /**
+ * 연수별 개별 시트 즉시 생성 및 동기화 (Apps Script 에디터에서 직접 실행용)
+ * 웹앱 재배포 전이라도, 상단 함수 목록에서 이 함수를 선택 후 ▶ 실행을 누르면 모든 시트가 즉시 생성됩니다.
+ */
+function createAllTaskSheets() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet() || book_();
+  syncAllTaskSheets_(ss);
+  console.log('✅ 모든 연수별 시트 생성 및 동기화가 성공적으로 완료되었습니다.');
+}
+
+/**
  * 기본 시트 존재 여부 확인 및 생성
  */
 function ensureSheet_(ss, name, headers) {

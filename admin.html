@@ -255,12 +255,82 @@
             모든 기기에 한꺼번에 적용하려면 GitHub 저장소의 <code>config.js</code> 에 URL을 적으면 됩니다.</p>
         </div>
 
+        <div class="panel" id="sharePanel" style="border: 2px solid #3b82f6; background: #f8faff;">
+          <h2 style="color:#1d4ed8; display:flex; align-items:center; gap:8px;">📢 교직원 배포용 웹앱 링크 공유</h2>
+          <p class="hint" style="color:#334155; line-height:1.6; margin-top:2px;">
+            교직원들이 각자의 스마트폰, PC, 또는 시크릿 모드에서 접속했을 때 <b>데모 모드가 아닌 우리 학교 구글 시트 데이터로 바로 자동 연결</b>되는 배포 링크입니다.
+          </p>
+
+          <div class="field" style="margin-top:12px;">
+            <label for="shareUrlInput" style="font-weight:700; color:#1e293b;">교직원에게 전달할 접속 링크</label>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input type="text" id="shareUrlInput" readonly style="background:#fff; font-family:monospace; font-size:13px; font-weight:600; color:#2563eb;" value="">
+              <button type="button" class="btn primary" id="copyShareUrlBtn" style="white-space:nowrap; padding:10px 16px;">🔗 링크 복사</button>
+            </div>
+            <span class="msgline" id="shareCopyMsg" style="font-size:13px; font-weight:600; margin-top:4px;"></span>
+          </div>
+
+          <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <a id="testStaffLink" href="index.html" target="_blank" rel="noopener" class="btn" style="text-decoration:none; font-size:13px; font-weight:600;">📱 교직원 화면 새 탭에서 열어보기 (테스트)</a>
+          </div>
+
+          <div style="margin-top:14px; padding:12px 14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; font-size:13px; line-height:1.6; color:#1e40af;">
+            <div style="font-weight:700; margin-bottom:4px; font-size:13.5px;">💡 교내 배포 절차 2가지 방법:</div>
+            <ul style="margin:4px 0 0 16px; padding:0;">
+              <li><b>방법 1 (가장 쉬운 즉시 전달):</b> 위의 <b>[🔗 링크 복사]</b> 버튼을 눌러 복사된 링크를 쿨메신저/카카오톡/업무포털 등으로 교직원에게 전달하세요. 교직원이 클릭하는 즉시 시크릿 모드나 개인 폰에서도 학교 구글 시트에 자동으로 연결됩니다.</li>
+              <li><b>방법 2 (영구 고정 - GitHub config.js 설정):</b> GitHub 저장소의 <code>config.js</code> 파일에서 <code>apiUrl: '웹앱URL'</code>을 입력해 두면, 뒤에 파라미터가 없는 기본 주소(<code>https://thf4101-gif.github.io/…</code>)로 접속해도 모든 기기에서 항상 구글 시트가 100% 자동 연동됩니다.</li>
+            </ul>
+          </div>
+        </div>
+
         <div class="panel">
           <h2>📑 스프레드시트 연수별 개별 시트 생성 & 동기화</h2>
           <p class="hint">성인지교육, 4대폭력예방교육, 감염병 예방 등 <b>각 연수별 전용 시트(탭)</b>를 자동으로 생성하고, 교직원 명단 및 이수번호·연수형태를 각 시트의 행에 동기화합니다.</p>
-          <div class="row" style="margin-top:10px;">
+          <div class="row" style="margin-top:10px; flex-wrap:wrap; gap:8px; align-items:center;">
             <button class="btn sheet" id="syncSheetsBtn">📑 연수별 시트 생성 및 동기화 실행</button>
+            <button type="button" class="btn" id="openCodeModalBtn">📋 최신 Apps Script 코드 보기/복사</button>
             <span class="msgline" id="syncSheetsMsg"></span>
+          </div>
+
+          <!-- 실패 또는 버전 불일치 시 자동으로 안내되는 상세 가이드 -->
+          <div id="syncHelpBox" hidden style="margin-top:14px; padding:14px 16px; background:#fff7ed; border:1px solid #f97316; border-radius:10px; font-size:13px; line-height:1.65; color:#7c2d12;">
+            <div style="font-weight:800; font-size:14px; color:#c2410c; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+              <span>🚨</span> 실패 원인: 구글 스프레드시트의 Apps Script가 이전 버전으로 배포되어 있습니다
+            </div>
+            <p style="margin:4px 0 10px 0; color:#431407;">
+              스프레드시트에 현재 배포된 웹 앱이 <b>연수별 시트 자동 생성(<code>syncTaskSheets</code>)</b> 기능이 추가되기 전 버전이어서 <i>"알 수 없는 요청입니다"</i> 오류가 발생한 것입니다.<br>
+              아래 <b>[해결 방법 1 (가장 빠름)]</b> 또는 <b>[해결 방법 2]</b> 중 편한 방법으로 1분 만에 해결할 수 있습니다!
+            </p>
+
+            <div style="background:#ffffff; border:1px solid #fed7aa; border-radius:8px; padding:12px 14px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+              <div style="font-weight:700; color:#c2410c; font-size:13.5px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+                <span>⚡ 해결 방법 1: Apps Script 창에서 함수 1회 직접 실행 (재배포 불필요!)</span>
+                <button type="button" class="btn primary" id="copyCodeForHelp1" style="padding:4px 10px; font-size:12px;">📋 최신 코드 복사</button>
+              </div>
+              <ol style="margin:4px 0 0 18px; padding:0; color:#1f2937;">
+                <li>위의 <b>[📋 최신 코드 복사]</b> 버튼을 누릅니다.</li>
+                <li>구글 스프레드시트 상단 메뉴 <b>확장 프로그램 → Apps Script</b> 창으로 이동합니다.</li>
+                <li>기존 코드를 모두 선택(<code>Ctrl+A</code>) 후 붙여넣기(<code>Ctrl+V</code>)하고 <b>저장(<code>Ctrl+S</code>)</b>합니다.</li>
+                <li>상단 실행 함수 드롭다운(기본값 setup)에서 <b><code>createAllTaskSheets</code></b> 를 선택합니다.</li>
+                <li>오른쪽 <b>▶ 실행</b> 버튼을 누르면 끝!</li>
+              </ol>
+              <div style="color:#059669; font-weight:700; margin-top:6px; font-size:12px; background:#ecfdf5; padding:6px 10px; border-radius:6px;">
+                🎉 웹 앱을 다시 배포하지 않아도 성인지교육, 4대폭력, 다문화 등 모든 연수별 시트(탭)가 스프레드시트에 즉시 자동 생성되고 교직원 명단 및 이수 데이터가 동기화됩니다!
+              </div>
+            </div>
+
+            <div style="background:#ffffff; border:1px solid #fed7aa; border-radius:8px; padding:12px 14px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+              <div style="font-weight:700; color:#c2410c; font-size:13.5px; margin-bottom:6px;">
+                🔄 해결 방법 2: 웹 앱을 [새 버전]으로 배포 후 이 버튼 다시 누르기
+              </div>
+              <ol style="margin:4px 0 0 18px; padding:0; color:#1f2937;">
+                <li>Apps Script 창에 최신 코드를 붙여넣고 저장(<code>Ctrl+S</code>)합니다.</li>
+                <li>우측 상단 <b>배포 → 배포 관리</b>를 클릭합니다.</li>
+                <li>활성 배포 옆 <b>연필 아이콘(✏️ 수정)</b>을 클릭합니다.</li>
+                <li>버전 드롭다운에서 <b>[새 버전]</b>을 선택하고 우측 하단 <b>[배포]</b> 버튼을 클릭합니다.</li>
+                <li>이 관리자 화면으로 돌아와서 <b>[📑 연수별 시트 생성 및 동기화 실행]</b> 버튼을 다시 누르면 성공합니다.</li>
+              </ol>
+            </div>
           </div>
         </div>
 
@@ -309,6 +379,28 @@
         <a class="btn primary" id="certOpenBtn" target="_blank" rel="noopener" hidden>원본 파일 열기 / 다운로드</a>
         <button type="button" class="btn" id="certDoneBtn">확인</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div id="codeModal" class="modal" hidden>
+  <div class="modal-box" style="max-width:760px; width:95%;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h3 style="margin:0; font-size:17px; font-weight:800; display:flex; align-items:center; gap:8px;">
+        <span>📋</span> Apps Script 최신 코드 (Code.gs)
+      </h3>
+      <button type="button" class="btn" id="codeModalClose">✕ 닫기</button>
+    </div>
+    <p class="hint" style="margin-top:0; line-height:1.6;">
+      이 코드를 전체 복사하여 구글 스프레드시트의 <b>확장 프로그램 → Apps Script</b> 창에 전체 덮어쓰기(Ctrl+A 후 Ctrl+V)하고 <b>저장(Ctrl+S)</b>하세요.
+    </p>
+    <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; align-items:center;">
+      <button type="button" class="btn primary" id="copyModalCodeBtn" style="font-weight:700;">📋 전체 코드 클립보드에 복사</button>
+      <span class="hint" id="codeCopyStatus"></span>
+    </div>
+    <textarea id="codeModalText" style="width:100%; height:340px; font-family:Consolas, Monaco, monospace; font-size:12px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:12px; white-space:pre; line-height:1.45;" readonly spellcheck="false" placeholder="코드 로딩 중…"></textarea>
+    <div style="margin-top:12px; display:flex; justify-content:flex-end;">
+      <button type="button" class="btn" id="codeModalDoneBtn">확인 완료</button>
     </div>
   </div>
 </div>
@@ -734,6 +826,22 @@ function renderSettings() {
   $('disconnectBtn').hidden = !on;
   $('demoPanel').hidden = on;
   $('pinHint').textContent = on ? '구글 스프레드시트에 저장된 비밀번호가 바뀝니다. 모든 기기에 적용됩니다.' : '데모 모드의 비밀번호가 바뀝니다.';
+
+  // 교직원 배포 링크 생성
+  if ($('shareUrlInput')) {
+    if (on && Api.url) {
+      const origin = window.location.origin;
+      const pathname = window.location.pathname;
+      let indexPath = pathname.replace(/\/admin\.html.*$/, '/index.html').replace(/\/admin.*$/, '/');
+      if (!indexPath.endsWith('/') && !indexPath.endsWith('.html')) indexPath += '/index.html';
+      const baseUrl = origin + indexPath;
+      const shareUrl = (U.CFG && U.CFG.apiUrl) ? baseUrl : `${baseUrl}?api=${encodeURIComponent(Api.url)}`;
+      $('shareUrlInput').value = shareUrl;
+      if ($('testStaffLink')) $('testStaffLink').href = shareUrl;
+    } else {
+      $('shareUrlInput').value = '구글 스프레드시트를 먼저 연동하면 공유 링크가 자동 생성됩니다.';
+    }
+  }
 }
 
 $('connectBtn').addEventListener('click', async () => {
@@ -762,14 +870,98 @@ $('disconnectBtn').addEventListener('click', () => {
   showGate('연동을 해제했습니다. 데모 비밀번호(1234)로 들어오세요.');
 });
 
-$('copyCode').addEventListener('click', async () => {
+if ($('copyShareUrlBtn')) {
+  $('copyShareUrlBtn').addEventListener('click', async () => {
+    const url = $('shareUrlInput').value;
+    if (!url || url.includes('먼저 연동하면')) return alert('스프레드시트가 연동된 후 링크를 복사할 수 있습니다.');
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        $('shareUrlInput').select();
+        document.execCommand('copy');
+      }
+      $('shareCopyMsg').className = 'msgline ok';
+      $('shareCopyMsg').textContent = '✅ 복사 완료! 메신저, 카카오톡, 또는 업무포털에 붙여넣어 교직원에게 전달하세요.';
+      toast('교직원 접속 링크를 복사했습니다');
+    } catch (e) {
+      $('shareUrlInput').select();
+      $('shareCopyMsg').className = 'msgline';
+      $('shareCopyMsg').textContent = 'Ctrl+C를 눌러 복사하세요.';
+    }
+  });
+}
+
+let cachedCodeGsText = '';
+async function getCodeGsText() {
+  if (cachedCodeGsText) return cachedCodeGsText;
   try {
-    const r = await fetch('apps-script/Code.gs', { cache: 'no-store' });
-    if (!r.ok) throw 0;
-    await navigator.clipboard.writeText(await r.text());
-    toast('Apps Script 코드를 복사했습니다');
+    let r = await fetch('apps-script/Code.gs', { cache: 'no-store' });
+    if (!r.ok) r = await fetch('public/apps-script/Code.gs', { cache: 'no-store' });
+    if (!r.ok) throw new Error('파일을 찾을 수 없습니다.');
+    cachedCodeGsText = await r.text();
+    return cachedCodeGsText;
   } catch (e) {
-    alert('GitHub 저장소의 apps-script/Code.gs 파일의 내용을 복사하세요.');
+    throw new Error('Code.gs 코드를 가져오지 못했습니다: ' + (e.message || e));
+  }
+}
+
+async function copyCodeToClipboard() {
+  try {
+    const text = await getCodeGsText();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      toast('Apps Script 최신 코드를 복사했습니다!');
+      return true;
+    } else {
+      openCodeModal();
+      return true;
+    }
+  } catch (err) {
+    alert(err.message || '코드를 복사하지 못했습니다. 직접 모달을 열어 복사해 주세요.');
+    openCodeModal();
+    return false;
+  }
+}
+
+async function openCodeModal() {
+  $('codeModal').hidden = false;
+  $('codeCopyStatus').textContent = '';
+  if (!$('codeModalText').value) {
+    try {
+      const code = await getCodeGsText();
+      $('codeModalText').value = code;
+    } catch (e) {
+      $('codeModalText').value = '/* 코드를 불러오지 못했습니다. 프로젝트의 apps-script/Code.gs 파일을 직접 열어주세요. */';
+    }
+  }
+  $('codeModalText').focus();
+  $('codeModalText').select();
+}
+
+$('copyCode').addEventListener('click', copyCodeToClipboard);
+$('copyCodeForHelp1').addEventListener('click', copyCodeToClipboard);
+$('openCodeModalBtn').addEventListener('click', openCodeModal);
+$('codeModalClose').addEventListener('click', () => { $('codeModal').hidden = true; });
+$('codeModalDoneBtn').addEventListener('click', () => { $('codeModal').hidden = true; });
+$('codeModal').addEventListener('click', e => { if (e.target.id === 'codeModal') $('codeModal').hidden = true; });
+
+$('copyModalCodeBtn').addEventListener('click', async () => {
+  const code = $('codeModalText').value;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(code);
+      $('codeCopyStatus').textContent = '✅ 복사 완료!';
+      toast('Apps Script 전체 코드를 복사했습니다');
+    } else {
+      $('codeModalText').focus();
+      $('codeModalText').select();
+      $('codeCopyStatus').textContent = 'Ctrl+C를 눌러 복사하세요.';
+    }
+  } catch (e) {
+    $('codeModalText').focus();
+    $('codeModalText').select();
+    $('codeCopyStatus').textContent = 'Ctrl+C를 눌러 복사하세요.';
   }
 });
 
@@ -781,10 +973,16 @@ $('syncSheetsBtn').addEventListener('click', async () => {
     const res = await Api.call('syncTaskSheets', { pin });
     $('syncSheetsMsg').className = 'msgline ok';
     $('syncSheetsMsg').textContent = `✅ 성공: 총 ${res.count || D.tasks.length}개 연수의 개별 시트가 생성·동기화되었습니다!`;
+    if ($('syncHelpBox')) $('syncHelpBox').hidden = true;
     toast('연수별 시트 동기화 완료!');
   } catch (err) {
     $('syncSheetsMsg').className = 'msgline err';
-    $('syncSheetsMsg').textContent = '동기화 실패: ' + (err.message || err);
+    const errMsg = err.message || String(err);
+    $('syncSheetsMsg').textContent = '동기화 실패: ' + errMsg;
+    if ($('syncHelpBox')) {
+      $('syncHelpBox').hidden = false;
+      $('syncHelpBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
   } finally {
     $('syncSheetsBtn').disabled = false;
   }
