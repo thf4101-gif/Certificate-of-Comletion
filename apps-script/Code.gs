@@ -233,14 +233,16 @@ function updateTaskSheetRecord_(ss, taskName, s, certNo, certType, time, fileUrl
     }
 
     const fileCell = fileUrl ? (fileUrl.indexOf('http') === 0 ? '=HYPERLINK("' + fileUrl + '", "이수증 보기")' : fileUrl) : '';
+    const certCell = certNo ? cell_(certNo) : '이수 완료';
+    const typeCell = cell_(certType || '원격 연수');
 
     if (targetRow > 0) {
       // 해당 행의 [이수번호, 연수 형태, 제출일시, 이수증 첨부] 갱신
       sh.getRange(targetRow, 4, 1, 4).setValues([[
-        cell_(certNo || '이수 완료'),
-        cell_(certType || '원격 연수'),
+        certCell,
+        typeCell,
         cell_(time),
-        cell_(fileCell)
+        fileCell
       ]]);
     } else {
       // 행이 없으면 추가
@@ -248,10 +250,10 @@ function updateTaskSheetRecord_(ss, taskName, s, certNo, certType, time, fileUrl
         cell_(s.no),
         cell_(role),
         cell_(cleanName),
-        cell_(certNo || '이수 완료'),
-        cell_(certType || '원격 연수'),
+        certCell,
+        typeCell,
         cell_(time),
-        cell_(fileCell)
+        fileCell
       ]);
     }
   } catch (err) {
@@ -389,6 +391,17 @@ function saveFileToDrive_(fileData, s, task) {
   }
 }
 
+/**
+ * 구글 드라이브(DriveApp) 접근 권한 1회 승인 및 시트 동기화 함수
+ * Apps Script 상단 함수 선택창에서 'authorizeDriveAndSetup'을 고르고 ▶ 실행을 누르면 드라이브 권한 승인 창이 뜹니다.
+ */
+function authorizeDriveAndSetup() {
+  const folder = getOrCreateFolder_('교직원연수_이수증첨부');
+  Logger.log('구글 드라이브 폴더 생성 및 권한 승인 성공: ' + folder.getName());
+  createAllTaskSheets();
+  return '구글 드라이브 접근 권한 승인 및 모든 연수별 시트 생성이 완료되었습니다.';
+}
+
 function doPost(e) {
   const lock = LockService.getScriptLock();
   let locked = false;
@@ -505,6 +518,9 @@ function doPost(e) {
           else if (existingRecord.memo) fullMemoParts.push(existingRecord.memo);
           const fullMemo = fullMemoParts.join(' / ');
 
+          const fileLinkCell = fileUrl ? (fileUrl.indexOf('http') === 0 ? '=HYPERLINK("' + fileUrl + '", "이수증 보기")' : fileUrl) : '';
+          const certCell = certNo ? cell_(certNo) : '이수 완료';
+
           // 1. 제출기록 시트에서 기존 행 찾아서 업데이트
           const lastRow = sh.getLastRow();
           let updatedRow = false;
@@ -520,9 +536,9 @@ function doPost(e) {
                   cell_(s.name),
                   cell_(task),
                   cell_(fullMemo),
-                  cell_(certNo),
+                  certCell,
                   cell_(certType),
-                  cell_(fileUrl)
+                  fileLinkCell
                 ]]);
                 updatedRow = true;
                 break;
@@ -536,9 +552,9 @@ function doPost(e) {
               cell_(s.name),
               cell_(task),
               cell_(fullMemo),
-              cell_(certNo),
+              certCell,
               cell_(certType),
-              cell_(fileUrl)
+              fileLinkCell
             ]);
           }
 
@@ -552,6 +568,8 @@ function doPost(e) {
           if (certType) fullMemoParts.push('연수형태: ' + certType);
           if (memo) fullMemoParts.push(memo);
           const fullMemo = fullMemoParts.join(' / ');
+          const fileLinkCell = fileUrl ? (fileUrl.indexOf('http') === 0 ? '=HYPERLINK("' + fileUrl + '", "이수증 보기")' : fileUrl) : '';
+          const certCell = certNo ? cell_(certNo) : '이수 완료';
 
           // 1. 전체 통합 기록 시트(제출기록)에 추가
           sh.appendRow([
@@ -560,9 +578,9 @@ function doPost(e) {
             cell_(s.name),
             cell_(task),
             cell_(fullMemo),
-            cell_(certNo),
+            certCell,
             cell_(certType),
-            cell_(fileUrl)
+            fileLinkCell
           ]);
 
           // 2. 해당 연수 전용 시트(성인지교육, 4대폭력예방교육 등)에 갱신/추가

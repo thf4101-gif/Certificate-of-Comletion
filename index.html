@@ -219,7 +219,10 @@
 </style>
 </head>
 <body>
-<div id="demoBanner" class="demo" hidden>데모 모드 — 구글 스프레드시트 연동 전입니다 (관리자 페이지 › 설정에서 연동)</div>
+<div id="demoBanner" class="demo" hidden style="background:#fff7ed; border-bottom:2px solid #fb923c; color:#9a3412; padding:10px 16px; font-size:13.5px; line-height:1.5; text-align:center; display:flex; justify-content:center; align-items:center; gap:10px; flex-wrap:wrap;">
+  <span>⚠️ <b>[데모 모드]로 실행 중</b> (스마트폰·시크릿 모드 접속 시 학교 구글 시트 연동 주소가 필요합니다)</span>
+  <button type="button" id="btnQuickConnectApi" style="background:#ea580c; color:#fff; border:none; border-radius:6px; padding:4px 12px; font-weight:700; font-size:12.5px; cursor:pointer;">🔗 구글 시트 주소 등록 / 확인</button>
+</div>
 <header>
   <h1>📮 <span id="title">교직원 연수 이수증 수합</span><small id="className"></small></h1>
   <button id="adminSpot" aria-label="담당자 로그인 및 시계" title="누르면 담당자 로그인 화면이 열립니다"></button>
@@ -301,6 +304,30 @@ $('title').textContent = CFG.title || '교직원 연수 이수증 수합';
 $('className').textContent = CFG.className || '';
 document.title = (CFG.className ? CFG.className + ' ' : '') + (CFG.title || '교직원 연수 이수증 수합');
 $('demoBanner').hidden = !Api.isDemo;
+
+if ($('btnQuickConnectApi')) {
+  $('btnQuickConnectApi').addEventListener('click', () => {
+    const cur = Api.url || '';
+    const val = prompt(
+      '교내 구글 스프레드시트와 연동할 Apps Script 웹 앱 URL을 입력하세요:\n\n(※ 관리자 화면의 [교직원 배포용 웹앱 링크]로 접속하시면 모든 교직원 기기에서 자동 연결됩니다)',
+      cur
+    );
+    if (val !== null) {
+      const trimmed = val.trim();
+      if (trimmed && /^https:\/\/script\.google(usercontent)?\.com\/.+/.test(trimmed)) {
+        Api.setUrl(trimmed);
+        alert('구글 시트 연동 주소가 저장되었습니다. 페이지를 새로고침하여 연결합니다.');
+        location.reload();
+      } else if (!trimmed) {
+        Api.setUrl('');
+        alert('데모 모드로 설정되었습니다.');
+        location.reload();
+      } else {
+        alert('올바른 Google Apps Script 웹 앱 URL이 아닙니다.\n(https://script.google.com/macros/s/... 형태여야 합니다)');
+      }
+    }
+  });
+}
 
 function tick() {
   const d = new Date();
@@ -750,16 +777,16 @@ function renderTasks() {
 
         <div class="cert-fields-box">
           ${curCertNo ? `
-            <div class="cert-extracted-badge">
+            <div class="cert-extracted-badge" style="background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8; padding:8px 12px; border-radius:8px; font-weight:700; display:flex; align-items:center; gap:6px; margin-bottom:10px; font-size:14px;">
               <span>✨</span>
-              <span>${fileObj ? '이수증 자동 스캔 완료' : '이수번호 기입됨'}</span>
+              <span>${fileObj ? `이수번호 자동 스캔 성공: <b style="color:#1e40af; background:#dbeafe; padding:2px 8px; border-radius:5px;">${esc(curCertNo)}</b>` : `이수번호 기입됨: <b>${esc(curCertNo)}</b>`}</span>
             </div>
           ` : ''}
           <div class="cert-field-row">
             <label for="certNo_${i}">이수번호</label>
             <input type="text" id="certNo_${i}" data-field="certNo" data-task="${esc(t.name)}" value="${esc(curCertNo)}" placeholder="예: NO. 공무원 성인지 사이버-2026-0988935 또는 수비초-7571">
           </div>
-          <div class="cert-field-hint">💡 이수증을 스캔/첨부하면 자동 추출되며, 직접 수정하거나 타이핑할 수 있습니다.</div>
+          <div class="cert-field-hint">💡 상단 좌측 이수번호가 자동 인식되며, 서식에 맞게 직접 수정하거나 타이핑할 수도 있습니다.</div>
 
           <div class="cert-field-row" style="margin-top:2px;">
             <label for="certType_${i}">연수 형태</label>
@@ -773,9 +800,10 @@ function renderTasks() {
           </div>
 
           ${isEditingDone ? `
-            <div style="margin-top:12px; display:flex; justify-content:flex-end;">
-              <button type="button" class="btn primary" data-action="save-single" data-task="${esc(t.name)}" style="padding:10px 18px; font-size:14px; font-weight:700;">
-                💾 [${esc(t.name)}] 이수증 및 이수번호 갱신 저장하기
+            <div style="margin-top:14px; padding-top:12px; border-top:1px dashed #cbd5e1; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+              <span style="font-size:13px; color:#475569;">💡 확인 후 아래 버튼을 누르면 구글 시트에 즉시 반영됩니다.</span>
+              <button type="button" class="btn primary" data-action="save-single" data-task="${esc(t.name)}" style="padding:10px 20px; font-size:14.5px; font-weight:800; background:#2563eb; color:#fff; border-radius:10px; cursor:pointer; box-shadow:0 4px 12px rgba(37,99,235,0.25);">
+                💾 [${esc(t.name)}] 구글 시트에 갱신 저장하기
               </button>
             </div>
           ` : ''}
@@ -859,6 +887,7 @@ $('tasks').addEventListener('change', async e => {
         ocrScanningMap.delete(taskName);
         if (ocrResult.certNo) {
           pickedCertNos.set(taskName, ocrResult.certNo);
+          picked.add(taskName);
         }
         if (ocrResult.certType) {
           pickedCertTypes.set(taskName, ocrResult.certType);
@@ -882,7 +911,7 @@ $('tasks').addEventListener('click', e => {
     const taskName = rescanBtn.dataset.task;
     const fileData = pickedFiles.get(taskName);
     if (fileData && fileData.dataUrl) {
-      ocrScanningMap.set(taskName, { pct: 15, status: '다시 스캔 중...' });
+      ocrScanningMap.set(taskName, { pct: 15, status: '이수증 상단 분석 중...' });
       renderTasks();
       CertScanner.scanCertificateImage(fileData.dataUrl, (pct, status) => {
         ocrScanningMap.set(taskName, { pct, status });
@@ -892,7 +921,10 @@ $('tasks').addEventListener('click', e => {
         if (statEl) statEl.textContent = `${pct}%`;
       }).then(ocrResult => {
         ocrScanningMap.delete(taskName);
-        if (ocrResult.certNo) pickedCertNos.set(taskName, ocrResult.certNo);
+        if (ocrResult.certNo) {
+          pickedCertNos.set(taskName, ocrResult.certNo);
+          picked.add(taskName);
+        }
         if (ocrResult.certType) pickedCertTypes.set(taskName, ocrResult.certType);
         renderTasks();
       }).catch(err => {
@@ -1103,8 +1135,30 @@ async function doSubmitCertificates(targetTaskList = null) {
   pickedList.forEach(t => {
     if (pickedFiles.has(t)) filesMap[t] = pickedFiles.get(t);
     if (isTbTask(t)) memosMap[t] = getTbMemo();
-    if (pickedCertNos.has(t)) certNosMap[t] = pickedCertNos.get(t);
-    if (pickedCertTypes.has(t)) certTypesMap[t] = pickedCertTypes.get(t);
+
+    // 이수번호: pickedCertNos 우선, 없으면 DOM input 값 또는 기존 기록값 반영
+    let cNo = pickedCertNos.get(t);
+    if (!cNo) {
+      const inputEl = document.querySelector(`input[data-field="certNo"][data-task="${CSS.escape(t)}"]`);
+      if (inputEl && inputEl.value.trim()) cNo = inputEl.value.trim();
+    }
+    if (!cNo) {
+      const ex = data.records.find(r => r.no === me.no && (r.name === me.name || r.name.indexOf(me.name) >= 0) && r.task === t);
+      if (ex && ex.certNo && ex.certNo !== '이수 완료' && ex.certNo !== '담당자 직접 확인') cNo = ex.certNo;
+    }
+    if (cNo) certNosMap[t] = cNo;
+
+    // 연수 형태: pickedCertTypes 우선, 없으면 DOM select 값 또는 기존 기록값
+    let cType = pickedCertTypes.get(t);
+    if (!cType) {
+      const selEl = document.querySelector(`select[data-field="certType"][data-task="${CSS.escape(t)}"]`);
+      if (selEl && selEl.value) cType = selEl.value;
+    }
+    if (!cType) {
+      const ex = data.records.find(r => r.no === me.no && (r.name === me.name || r.name.indexOf(me.name) >= 0) && r.task === t);
+      if (ex && ex.certType) cType = ex.certType;
+    }
+    if (cType) certTypesMap[t] = cType;
   });
 
   try {
