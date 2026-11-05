@@ -1248,11 +1248,43 @@ function reset() {
   load(true);
 }
 
-// 60초 무조작 시 홈 복귀
+// 입력 시간 여유 확보: 기본 대기 시간을 90초(1분 30초)로 넉넉하게 연장
+// + 타이핑, 터치, 스크롤, 파일 첨부 시 자동으로 시간 연장
+// + 입력 필드에 커서가 있거나 파일 스캔 중에는 절대 초기화면으로 튕기지 않도록 방지
+const IDLE_TIMEOUT_MS = 90000; // 90초 (기존 60초에서 30초 이상 여유 확보)
+
 function armIdle() {
   clearTimeout(idleTimer);
-  idleTimer = setTimeout(reset, 60000);
+  if (!me) return;
+  idleTimer = setTimeout(() => {
+    // 입력창 포커스 중이거나, 파일 스캔 중이거나, 등록 진행 중이면 초기화 방지 및 재연장
+    const isTyping = document.activeElement && ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName);
+    const isScanning = (ocrScanningMap && ocrScanningMap.size > 0);
+    if (isTyping || isScanning || busy) {
+      armIdle();
+      return;
+    }
+    reset();
+  }, IDLE_TIMEOUT_MS);
 }
+
+// 스마트폰 화면 터치, 스크롤, 입력 시 입력 대기 시간 자동 연장
+['touchstart', 'touchmove', 'pointerdown', 'keydown', 'input', 'scroll'].forEach(evtName => {
+  window.addEventListener(evtName, () => {
+    if (me && !busy) {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        const isTyping = document.activeElement && ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName);
+        const isScanning = (ocrScanningMap && ocrScanningMap.size > 0);
+        if (isTyping || isScanning || busy) {
+          armIdle();
+          return;
+        }
+        reset();
+      }, IDLE_TIMEOUT_MS);
+    }
+  }, { passive: true });
+});
 
 // 5분마다 연수 목록 갱신
 setInterval(() => { if (!me) load(true); }, 300000);

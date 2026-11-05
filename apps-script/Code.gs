@@ -40,7 +40,8 @@ function setup() {
 function createAllTaskSheets() {
   const ss = SpreadsheetApp.getActiveSpreadsheet() || book_();
   syncAllTaskSheets_(ss);
-  console.log('✅ 모든 연수별 시트 생성 및 동기화가 성공적으로 완료되었습니다.');
+  fixExistingHyperlinks();
+  console.log('✅ 모든 연수별 시트 생성, 동기화 및 기존 이수증 하이퍼링크 변환이 성공적으로 완료되었습니다.');
 }
 
 /**
@@ -232,18 +233,24 @@ function updateTaskSheetRecord_(ss, taskName, s, certNo, certType, time, fileUrl
       }
     }
 
-    const fileCell = fileUrl ? (fileUrl.indexOf('http') === 0 ? '=HYPERLINK("' + fileUrl + '", "이수증 보기")' : fileUrl) : '';
     const certCell = certNo ? cell_(certNo) : '이수 완료';
     const typeCell = cell_(certType || '원격 연수');
 
     if (targetRow > 0) {
-      // 해당 행의 [이수번호, 연수 형태, 제출일시, 이수증 첨부] 갱신
-      sh.getRange(targetRow, 4, 1, 4).setValues([[
+      // 1. [이수번호, 연수 형태, 제출일시] 갱신
+      sh.getRange(targetRow, 4, 1, 3).setValues([[
         certCell,
         typeCell,
-        cell_(time),
-        fileCell
+        cell_(time)
       ]]);
+      // 2. 이수증 첨부 열(7열): 확실하게 활성 하이퍼링크 수식으로 지정
+      const fCell = sh.getRange(targetRow, 7);
+      fCell.setNumberFormat('General');
+      if (fileUrl && fileUrl.indexOf('http') === 0) {
+        fCell.setFormula('=HYPERLINK("' + fileUrl + '", "이수증 보기")');
+      } else {
+        fCell.setValue(fileUrl || '');
+      }
     } else {
       // 행이 없으면 추가
       sh.appendRow([
@@ -253,8 +260,16 @@ function updateTaskSheetRecord_(ss, taskName, s, certNo, certType, time, fileUrl
         certCell,
         typeCell,
         cell_(time),
-        fileCell
+        ''
       ]);
+      const newRow = sh.getLastRow();
+      const fCell = sh.getRange(newRow, 7);
+      fCell.setNumberFormat('General');
+      if (fileUrl && fileUrl.indexOf('http') === 0) {
+        fCell.setFormula('=HYPERLINK("' + fileUrl + '", "이수증 보기")');
+      } else {
+        fCell.setValue(fileUrl || '');
+      }
     }
   } catch (err) {
     console.error('연수 시트 업데이트 오류 (' + taskName + '): ' + err);
@@ -392,6 +407,47 @@ function saveFileToDrive_(fileData, s, task) {
 }
 
 /**
+ * 기존 시트들에 텍스트로 잘못 표시된 '=HYPERLINK(...)' 셀들을 클릭 가능한 파란색 하이퍼링크로 일괄 변환
+ */
+function fixExistingHyperlinks() {
+  const ss = book_();
+  const sheets = ss.getSheets();
+  let fixedCount = 0;
+
+  sheets.forEach(sh => {
+    const lastRow = sh.getLastRow();
+    const lastCol = sh.getLastColumn();
+    if (lastRow <= 1 || lastCol < 7) return;
+
+    // 연수별 시트: 7열(이수증 첨부) / 제출기록 시트: 8열(이수증 첨부)
+    const isRecords = (sh.getName() === STAFF_SHEETS.records);
+    const col = isRecords ? 8 : 7;
+    if (col > lastCol) return;
+
+    const range = sh.getRange(2, col, lastRow - 1, 1);
+    const displayValues = range.getDisplayValues();
+
+    for (let i = 0; i < displayValues.length; i++) {
+      const val = String(displayValues[i][0]).trim();
+      // '=HYPERLINK("...", ...)' 형태의 텍스트가 들어가 있는 경우
+      if (/^=?HYPERLINK/i.test(val)) {
+        const match = val.match(/https:\/\/[^"',\s)]+/);
+        if (match) {
+          const url = match[0];
+          const cell = sh.getRange(i + 2, col);
+          cell.setNumberFormat('General');
+          cell.setFormula('=HYPERLINK("' + url + '", "이수증 보기")');
+          fixedCount++;
+        }
+      }
+    }
+  });
+
+  Logger.log('기존 이수증 하이퍼링크 변환 완료: ' + fixedCount + '개');
+  return '총 ' + fixedCount + '개의 이수증 링크가 클릭 가능한 하이퍼링크로 변환되었습니다!';
+}
+
+/**
  * 구글 드라이브(DriveApp) 접근 권한 1회 승인 및 시트 동기화 함수
  * Apps Script 상단 함수 선택창에서 'authorizeDriveAndSetup'을 고르고 ▶ 실행을 누르면 드라이브 권한 승인 창이 뜹니다.
  */
@@ -399,7 +455,8 @@ function authorizeDriveAndSetup() {
   const folder = getOrCreateFolder_('교직원연수_이수증첨부');
   Logger.log('구글 드라이브 폴더 생성 및 권한 승인 성공: ' + folder.getName());
   createAllTaskSheets();
-  return '구글 드라이브 접근 권한 승인 및 모든 연수별 시트 생성이 완료되었습니다.';
+  fixExistingHyperlinks();
+  return '구글 드라이브 접근 권한 승인, 모든 연수별 시트 생성 및 기존 이수증 링크 변환이 완료되었습니다.';
 }
 
 function doPost(e) {
@@ -426,6 +483,7 @@ function doPost(e) {
       out = true;
     } else if (q.action === 'syncTaskSheets') {
       syncAllTaskSheets_(ss);
+      fixExistingHyperlinks();
       out = { success: true, count: data_(ss).tasks.length };
     } else if (q.action === 'getStudentData' || q.action === 'getDashboard') {
       out = data_(ss);
@@ -530,16 +588,23 @@ function doPost(e) {
               if (String(recRows[i][1]).trim() === String(s.no).trim() &&
                   (recRows[i][2] === s.name || recRows[i][2].indexOf(s.name) >= 0) &&
                   recRows[i][3] === task) {
-                sh.getRange(i + 2, 1, 1, 8).setValues([[
+                const targetR = i + 2;
+                sh.getRange(targetR, 1, 1, 7).setValues([[
                   time,
                   cell_(s.no),
                   cell_(s.name),
                   cell_(task),
                   cell_(fullMemo),
                   certCell,
-                  cell_(certType),
-                  fileLinkCell
+                  cell_(certType)
                 ]]);
+                const recFCell = sh.getRange(targetR, 8);
+                recFCell.setNumberFormat('General');
+                if (fileUrl && fileUrl.indexOf('http') === 0) {
+                  recFCell.setFormula('=HYPERLINK("' + fileUrl + '", "이수증 보기")');
+                } else {
+                  recFCell.setValue(fileUrl || '');
+                }
                 updatedRow = true;
                 break;
               }
@@ -554,8 +619,16 @@ function doPost(e) {
               cell_(fullMemo),
               certCell,
               cell_(certType),
-              fileLinkCell
+              ''
             ]);
+            const newRecRow = sh.getLastRow();
+            const recFCell = sh.getRange(newRecRow, 8);
+            recFCell.setNumberFormat('General');
+            if (fileUrl && fileUrl.indexOf('http') === 0) {
+              recFCell.setFormula('=HYPERLINK("' + fileUrl + '", "이수증 보기")');
+            } else {
+              recFCell.setValue(fileUrl || '');
+            }
           }
 
           // 2. 해당 연수 전용 시트(성인지교육, 4대폭력예방교육 등)의 이수번호, 연수형태, 이수증 링크 갱신
@@ -568,7 +641,6 @@ function doPost(e) {
           if (certType) fullMemoParts.push('연수형태: ' + certType);
           if (memo) fullMemoParts.push(memo);
           const fullMemo = fullMemoParts.join(' / ');
-          const fileLinkCell = fileUrl ? (fileUrl.indexOf('http') === 0 ? '=HYPERLINK("' + fileUrl + '", "이수증 보기")' : fileUrl) : '';
           const certCell = certNo ? cell_(certNo) : '이수 완료';
 
           // 1. 전체 통합 기록 시트(제출기록)에 추가
@@ -580,8 +652,16 @@ function doPost(e) {
             cell_(fullMemo),
             certCell,
             cell_(certType),
-            fileLinkCell
+            ''
           ]);
+          const newRecRow = sh.getLastRow();
+          const recFCell = sh.getRange(newRecRow, 8);
+          recFCell.setNumberFormat('General');
+          if (fileUrl && fileUrl.indexOf('http') === 0) {
+            recFCell.setFormula('=HYPERLINK("' + fileUrl + '", "이수증 보기")');
+          } else {
+            recFCell.setValue(fileUrl || '');
+          }
 
           // 2. 해당 연수 전용 시트(성인지교육, 4대폭력예방교육 등)에 갱신/추가
           updateTaskSheetRecord_(ss, task, s, certNo, certType, time, fileUrl, d.students);
